@@ -1,13 +1,13 @@
-// Gemini 2.5 Flash (preview) REST boilerplate
-// Gemini 2.5 Flash (preview) REST boilerplate
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ""; // now reads from .env
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
 const model = 'gemini-2.5-flash-preview-05-20';
-const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+const endpoint = apiKey
+  ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+  : "";
+
+export const hasAI = !!apiKey;
 
 async function callGemini(promptParts) {
-  if (!apiKey) {
-    return { text: '(AI key missing. Provide an API key to enable AI features.)' };
-  }
+  if (!apiKey || !endpoint) return { text: '' };
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -22,11 +22,11 @@ async function callGemini(promptParts) {
 
 export async function generateDescription({ title, category, keywords }) {
   const prompt = [
-    `Create a concise, friendly listing description for Fixify+.`,
+    `Create a concise listing description for Fixify+.`,
     `Title: ${title}`,
     `Category: ${category}`,
     `Details/keywords: ${keywords || 'N/A'}`,
-    `Constraints: 60-120 words, simple English, include contact via phone, safety and community tone.`
+    `Constraints: 60-120 words, simple English, include phone contact and safety tone.`
   ];
   return callGemini(prompt);
 }
