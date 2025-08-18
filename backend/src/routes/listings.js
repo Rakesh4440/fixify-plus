@@ -13,23 +13,20 @@ const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Default to project uploads folder (local dev). On Render, set UPLOADS_DIR=/tmp/uploads
-const resolvedUploadsDir = (() => {
+// Default local: backend/uploads. On Render set UPLOADS_DIR=/tmp/uploads
+const uploadsDir = (() => {
   const envDir = process.env.UPLOADS_DIR;
   if (envDir && path.isAbsolute(envDir)) return envDir;
-  if (envDir) return path.join(__dirname, '..', '..', envDir); // allow relative path
+  if (envDir) return path.join(__dirname, '..', '..', envDir);
   return path.join(__dirname, '..', '..', 'uploads');
 })();
 
-// Ensure it exists
-if (!fs.existsSync(resolvedUploadsDir)) {
-  fs.mkdirSync(resolvedUploadsDir, { recursive: true });
-}
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 /* -------------------------------- Multer setup ------------------------------- */
 const storage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, resolvedUploadsDir),
-  filename: (_, file, cb) => {
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
     const safe = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     cb(null, Date.now() + '_' + safe);
   }
@@ -54,7 +51,7 @@ router.get('/', async (req, res, next) => {
         { location: new RegExp(q, 'i') },
         { category: new RegExp(q, 'i') },
         { city: new RegExp(q, 'i') },
-      { area: new RegExp(q, 'i') },
+        { area: new RegExp(q, 'i') },
         { pincode: new RegExp(q, 'i') }
       ];
     }
@@ -74,21 +71,20 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-/* ------------------------------- Create listing ------------------------------ */
-// Accepts JSON or multipart; when multipart, include field name "photo"
-router.post('/', upload.any(), authRequired, async (req, res, next) => {
+/* ---------------------------------- CREATE ---------------------------------- */
+// Accepts JSON or multipart; when multipart include field name "photo"
+router.post('/', authRequired, upload.single('photo'), async (req, res, next) => {
   try {
     const body = { ...(req.body || {}) };
 
+    // normalize booleans coming from multipart
     if (typeof body.isCommunityPosted !== 'undefined') {
       body.isCommunityPosted = body.isCommunityPosted === 'true' || body.isCommunityPosted === true;
     }
 
-    const photo =
-      (req.files || []).find((f) => f.fieldname === 'photo') ||
-      (req.files || [])[0];
-
-    if (photo) body.photoPath = `/uploads/${photo.filename}`;
+    if (req.file) {
+      body.photoPath = `/uploads/${req.file.filename}`;
+    }
 
     const required = ['title', 'category', 'contactNumber', 'type'];
     const missing = required.filter((k) => !body[k]);
@@ -105,7 +101,7 @@ router.post('/', upload.any(), authRequired, async (req, res, next) => {
   }
 });
 
-/* ---------------------------------- Read one --------------------------------- */
+/* ----------------------------------- READ ----------------------------------- */
 router.get('/:id', async (req, res, next) => {
   try {
     const item = await Listing.findById(req.params.id).populate('postedBy', 'name _id');
@@ -116,9 +112,9 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-/* --------------------------------- Update one -------------------------------- */
+/* ---------------------------------- UPDATE ---------------------------------- */
 // Accepts JSON or multipart with "photo" to replace image
-router.put('/:id', upload.any(), authRequired, async (req, res, next) => {
+router.put('/:id', authRequired, upload.single('photo'), async (req, res, next) => {
   try {
     const listing = await Listing.findById(req.params.id);
     if (!listing) return res.status(404).json({ message: 'Listing not found' });
@@ -132,11 +128,9 @@ router.put('/:id', upload.any(), authRequired, async (req, res, next) => {
       body.isCommunityPosted = body.isCommunityPosted === 'true' || body.isCommunityPosted === true;
     }
 
-    const photo =
-      (req.files || []).find((f) => f.fieldname === 'photo') ||
-      (req.files || [])[0];
-
-    if (photo) body.photoPath = `/uploads/${photo.filename}`;
+    if (req.file) {
+      body.photoPath = `/uploads/${req.file.filename}`;
+    }
 
     Object.assign(listing, body);
     await listing.save();
@@ -146,7 +140,7 @@ router.put('/:id', upload.any(), authRequired, async (req, res, next) => {
   }
 });
 
-/* --------------------------------- Delete one -------------------------------- */
+/* ---------------------------------- DELETE ---------------------------------- */
 router.delete('/:id', authRequired, async (req, res, next) => {
   try {
     const listing = await Listing.findById(req.params.id);
@@ -161,7 +155,7 @@ router.delete('/:id', authRequired, async (req, res, next) => {
   }
 });
 
-/* ------------------------------------ Reviews -------------------------------- */
+/* --------------------------------- REVIEWS ---------------------------------- */
 router.post('/:id/reviews', authRequired, async (req, res, next) => {
   try {
     const { rating, comment } = req.body;
