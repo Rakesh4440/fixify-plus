@@ -15,25 +15,43 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || '*', credentials: true }));
+/* ---------- Robust CORS (trims spaces & trailing slashes, handles OPTIONS) ---------- */
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map(s => s.trim().replace(/\/$/, ''))   // trim end slash
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true); // allow non-browser/health checks
+    const o = origin.replace(/\/$/, '');
+    if (allowedOrigins.includes(o)) return cb(null, true);
+    return cb(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  optionsSuccessStatus: 204,
+}));
+app.options('*', cors());
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan('dev'));
 
-// serve uploads at BOTH /uploads and /api/uploads
+// serve uploads at /uploads and /api/uploads
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsPath = path.join(__dirname, '..', 'uploads');
 app.use(['/uploads', '/api/uploads'], express.static(uploadsPath));
 
 app.get('/api/health', (req, res) =>
-  res.json({ status: 'ok', time: new Date().toISOString() })
+  res.json({ status: 'ok', time: new Date().toISOString(), allowedOrigins })
 );
 
 app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingRoutes);
 
-// 404 + error handler
 app.use(notFound);
 app.use(errorHandler);
 
