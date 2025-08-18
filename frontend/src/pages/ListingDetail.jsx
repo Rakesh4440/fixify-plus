@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api.js';
 import { summarizeReviews, hasAI } from '../services/ai.js';
@@ -22,26 +22,41 @@ export default function ListingDetail() {
   const navigate = useNavigate();
   const me = useMemo(() => getUserFromToken(), []);
   const [listing, setListing] = useState(null);
+  const [error, setError] = useState('');
+
+  // review inputs
+  const [rating, setRating] = useState(5);
+  const [hover, setHover] = useState(0);
+  const [comment, setComment] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
+
+  // AI summary
   const [summary, setSummary] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
-  const [error, setError] = useState('');
+
+  async function load() {
+    const data = await api(`/listings/${id}`);
+    setListing(data);
+
+    if (hasAI && (data.reviews?.length || 0) > 0) {
+      setLoadingAI(true);
+      const { text } = await summarizeReviews(data.reviews.map((r) => r.comment));
+      setSummary(text);
+      setLoadingAI(false);
+    } else {
+      setSummary('');
+    }
+  }
 
   useEffect(() => {
     (async () => {
       try {
-        const data = await api(`/listings/${id}`);
-        setListing(data);
-
-        if (hasAI && data.reviews?.length) {
-          setLoadingAI(true);
-          const { text } = await summarizeReviews(data.reviews.map((r) => r.comment));
-          setSummary(text);
-          setLoadingAI(false);
-        }
+        await load();
       } catch (e) {
         setError(e.message || 'Failed to load');
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (error) return <div style={{ padding: 24, color: 'crimson' }}>{error}</div>;
@@ -51,9 +66,8 @@ export default function ListingDetail() {
     ? (listing.photoPath.startsWith('http') ? listing.photoPath : `${API_BASE}${listing.photoPath}`)
     : null;
 
-  const isOwner =
-    !!me &&
-    (String(listing.postedBy?._id || listing.postedBy) === String(me.id) || me.role === 'admin');
+  const meOwns =
+    !!me && (String(listing.postedBy?._id || listing.postedBy) === String(me.id) || me.role === 'admin');
 
   const waHref = listing.contactNumber
     ? `https://wa.me/${listing.contactNumber.replace(/\D/g, '')}?text=Hi%2C%20I%20found%20your%20listing%20on%20Fixify%2B%3A%20${encodeURIComponent(
@@ -70,6 +84,26 @@ export default function ListingDetail() {
       navigate('/');
     } catch (e) {
       alert(e.message);
+    }
+  }
+
+  async function submitReview(e) {
+    e.preventDefault();
+    if (!me?.token) return alert('Please login to add a review.');
+    try {
+      setSavingReview(true);
+      await api(`/listings/${id}/reviews`, {
+        method: 'POST',
+        token: me.token,
+        body: { rating, comment }
+      });
+      setComment('');
+      await load(); // refresh reviews + summary
+      alert('Thanks for your review!');
+    } catch (err) {
+      alert(err.message || 'Failed to add review');
+    } finally {
+      setSavingReview(false);
     }
   }
 
@@ -104,7 +138,7 @@ export default function ListingDetail() {
       <div style={{ display: 'flex', gap: 10, margin: '12px 0' }}>
         <a className="btn" href={waHref} target="_blank" rel="noreferrer">WhatsApp</a>
         <a className="btn" href={callHref}>Call</a>
-        {isOwner && (
+        {meOwns && (
           <>
             <Link className="btn ghost" to={`/listing/${id}/edit`}>Edit</Link>
             <button className="btn danger" onClick={onDelete}>Delete</button>
@@ -112,19 +146,81 @@ export default function ListingDetail() {
         )}
       </div>
 
-      <h3>Reviews</h3>
-      <ul>
-        {listing.reviews?.map((r, i) => (
-          <li key={i}><b>{r.rating}/5</b> — {r.comment}</li>
-        ))}
-      </ul>
+      <h3 style={{ marginTop: 20 }}>Reviews</h3>
+      {listing.reviews?.length ? (
+        <ul style={{ paddingLeft: 18 }}>
+          {listing.reviews.map((r, i) => (
+            <li key={i} style={{ margin: '6px 0' }}>
+              <b>{r.rating}/5</b> — {r.comment}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p style={{ color: '#777' }}>No reviews yet.</p>
+      )}
 
-      {hasAI && (loadingAI ? <Loader text="Summarizing reviews..." /> : (summary && <p><i>Summary:</i> {summary}</p>))}
+      {/* Leave a review (logged in users) */}
+      <div style={{ marginTop: 12 }}>
+        <form onSubmit={submitReview} className="reviewBox">
+          <div className="stars">
+            {[1,2,3,4,5].map((v) => (
+              <button
+                key={v}
+                type="button"
+                className={(hover || rating) >= v ? 'star on' : 'star'}
+                onMouseEnter={() => setHover(v)}
+                onMouseLeave={() => setHover(0)}
+                onClick={() => setRating(v)}
+                aria-label={`${v} star`}
+              >
+                ★
+              </button>
+            ))}
+            <span style={{ marginLeft: 8, color: '#555' }}>{rating}/5</span>
+          </div>
+          <textarea
+            rows="3"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Share a quick note about your experience…"
+          />
+          <button className="btn" disabled={savingReview}>
+            {savingReview ? 'Submitting…' : 'Submit review'}
+          </button>
+        </form>
+      </div>
+
+      {/* AI summary */}
+      {hasAI && (
+        loadingAI ? (
+          <Loader text="Summarizing reviews..." />
+        ) : (
+          summary && (
+            <p style={{ marginTop: 12, fontStyle: 'italic' }}>
+              Summary: {summary}
+            </p>
+          )
+        )
+      )}
 
       <style>{`
         .btn { background:#574bff; color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; text-decoration:none }
         .btn.ghost { background:#eef; color:#222 }
         .btn.danger { background:#e53935 }
+        .reviewBox { display:grid; gap:8px; max-width:560px; margin-top:8px }
+        .reviewBox textarea {
+          padding:10px 12px; border:1px solid #e3e6ee; border-radius:10px;
+          background:#fbfdff; outline:none; font-size:14px;
+        }
+        .reviewBox textarea:focus {
+          border-color:#6b5cff; box-shadow:0 0 0 3px rgba(107,92,255,.15); background:#fff;
+        }
+        .stars { display:flex; align-items:center; gap:2px; }
+        .star {
+          background:transparent; border:none; font-size:22px; color:#c7c7c7; cursor:pointer;
+          padding:0; line-height:1;
+        }
+        .star.on { color:#f5b301; }
       `}</style>
     </div>
   );
