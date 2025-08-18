@@ -1,6 +1,18 @@
 import { useState } from 'react';
 import { generateDescription, hasAI } from '../services/ai.js';
 
+/* Ensure a phone string starts with +91 (India) for storage/display */
+function ensurePlus91(phone) {
+  let s = String(phone || '').trim().replace(/\s+/g, '');
+  if (!s) return '';
+  if (s.startsWith('+91')) return s;
+  const digits = s.replace(/\D/g, '');
+  if (digits.startsWith('91') && digits.length >= 12) return '+' + digits; // e.g. 9198...
+  if (digits.length === 10) return '+91' + digits;                         // 10-digit local
+  // Fallback: last 10 digits +91
+  return '+91' + digits.slice(-10);
+}
+
 export default function PostListing() {
   const [form, setForm] = useState({
     title: '',
@@ -36,14 +48,21 @@ export default function PostListing() {
   async function onSubmit(e) {
     e.preventDefault();
     setMsg('');
-    if (!form.title || !form.category || !form.contactNumber || !form.type) {
+
+    // normalize phone to always start with +91
+    const normalizedPhone = ensurePlus91(form.contactNumber);
+
+    if (!form.title || !form.category || !normalizedPhone || !form.type) {
       setMsg('Please fill Title, Category, Contact, and Type.');
       return;
     }
+
     try {
       setSubmitting(true);
       const fd = new FormData();
-      Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+      Object.entries({ ...form, contactNumber: normalizedPhone }).forEach(([k, v]) =>
+        fd.append(k, v)
+      );
       if (photo) fd.append('photo', photo);
 
       const res = await fetch(`${API}/listings`, {
@@ -55,9 +74,11 @@ export default function PostListing() {
       if (!res.ok) throw new Error(data?.message || 'Failed to create listing');
 
       setMsg('✅ Listing created!');
-      // reset minimal
+      // reset the file preview (keep form values so user can post similar again)
       setPhoto(null);
       setPreview('');
+      // reflect normalized phone in the input for clarity
+      update('contactNumber', normalizedPhone);
     } catch (err) {
       setMsg('❌ ' + (err.message || 'Error'));
     } finally {
@@ -118,7 +139,8 @@ export default function PostListing() {
             <input
               value={form.contactNumber}
               onChange={(e) => update('contactNumber', e.target.value)}
-              placeholder="WhatsApp / phone"
+              onBlur={(e) => update('contactNumber', ensurePlus91(e.target.value))}
+              placeholder="+91XXXXXXXXXX (auto +91)"
               required
             />
           </label>
@@ -167,9 +189,7 @@ export default function PostListing() {
           <label>
             <span>Photo</span>
             <input type="file" accept="image/*" onChange={onPickPhoto} />
-            {preview && (
-              <img className="preview" src={preview} alt="preview" />
-            )}
+            {preview && <img className="preview" src={preview} alt="preview" />}
           </label>
 
           <div className="actions">
@@ -203,51 +223,26 @@ export default function PostListing() {
           box-shadow: 0 8px 30px rgba(20,20,50,0.08);
           padding: 22px 22px 26px;
         }
-        h1 {
-          margin: 6px 0 14px;
-          font-size: 26px;
-        }
-        .grid {
-          display: grid;
-          gap: 12px;
-        }
+        h1 { margin: 6px 0 14px; font-size: 26px; }
+        .grid { display: grid; gap: 12px; }
         label { display: grid; gap: 6px; }
         label > span { font-size: 13px; color: #555; }
         input, select, textarea {
-          padding: 10px 12px;
-          border: 1px solid #e3e6ee;
-          background: #fbfdff;
-          border-radius: 10px;
-          outline: none;
-          font-size: 14px;
+          padding: 10px 12px; border: 1px solid #e3e6ee; background: #fbfdff;
+          border-radius: 10px; outline: none; font-size: 14px;
         }
         input:focus, select:focus, textarea:focus {
-          border-color: #6b5cff;
-          box-shadow: 0 0 0 3px rgba(107,92,255,0.15);
-          background: #fff;
+          border-color: #6b5cff; box-shadow: 0 0 0 3px rgba(107,92,255,0.15); background: #fff;
         }
         .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .check { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
-        .preview {
-          margin-top: 8px;
-          width: 220px; max-width: 100%;
-          border-radius: 12px; border: 1px solid #e3e6ee;
-        }
+        .preview { margin-top: 8px; width: 220px; max-width: 100%; border-radius: 12px; border: 1px solid #e3e6ee; }
         .actions { display: flex; gap: 10px; margin-top: 8px; }
-        .btn {
-          background: #574bff; color: #fff; border: none;
-          padding: 10px 14px; border-radius: 10px; cursor: pointer;
-          font-weight: 600;
-        }
+        .btn { background: #574bff; color: #fff; border: none; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; }
         .btn.ghost { background: #eef0ff; color: #393a7c; }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .note {
-          margin-top: 10px; padding: 10px 12px; border-radius: 10px;
-          background: #f5f7ff; color: #233; border: 1px solid #e3e6ee;
-        }
-        @media (max-width: 640px) {
-          .row2 { grid-template-columns: 1fr; }
-        }
+        .note { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #f5f7ff; color: #233; border: 1px solid #e3e6ee; }
+        @media (max-width: 640px) { .row2 { grid-template-columns: 1fr; } }
       `}</style>
     </div>
   );

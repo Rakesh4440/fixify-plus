@@ -6,6 +6,16 @@ import Loader from '../components/Loader.jsx';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/api$/, '');
 
+// Same helper as card
+function toE164IN(phone) {
+  let d = String(phone || '').replace(/\D/g, '');
+  if (!d) return '';
+  d = d.replace(/^0+/, '');
+  if (d.startsWith('91') && d.length >= 12) return d;
+  if (d.length === 10) return '91' + d;
+  return '91' + d.slice(-10);
+}
+
 function getUserFromToken() {
   const token = localStorage.getItem('token');
   if (!token) return null;
@@ -70,7 +80,7 @@ export default function ListingDetail() {
     !!me && (String(listing.postedBy?._id || listing.postedBy) === String(me.id) || me.role === 'admin');
 
   const waHref = listing.contactNumber
-    ? `https://wa.me/${listing.contactNumber.replace(/\D/g, '')}?text=Hi%2C%20I%20found%20your%20listing%20on%20Fixify%2B%3A%20${encodeURIComponent(
+    ? `https://wa.me/${toE164IN(listing.contactNumber)}?text=Hi%2C%20I%20found%20your%20listing%20on%20Fixify%2B%3A%20${encodeURIComponent(
         listing.title || ''
       )}`
     : '#';
@@ -84,26 +94,6 @@ export default function ListingDetail() {
       navigate('/');
     } catch (e) {
       alert(e.message);
-    }
-  }
-
-  async function submitReview(e) {
-    e.preventDefault();
-    if (!me?.token) return alert('Please login to add a review.');
-    try {
-      setSavingReview(true);
-      await api(`/listings/${id}/reviews`, {
-        method: 'POST',
-        token: me.token,
-        body: { rating, comment }
-      });
-      setComment('');
-      await load(); // refresh reviews + summary
-      alert('Thanks for your review!');
-    } catch (err) {
-      alert(err.message || 'Failed to add review');
-    } finally {
-      setSavingReview(false);
     }
   }
 
@@ -159,9 +149,30 @@ export default function ListingDetail() {
         <p style={{ color: '#777' }}>No reviews yet.</p>
       )}
 
-      {/* Leave a review (logged in users) */}
+      {/* Leave a review */}
       <div style={{ marginTop: 12 }}>
-        <form onSubmit={submitReview} className="reviewBox">
+        <form
+          onSubmit={async (e)=> {
+            e.preventDefault();
+            if (!me?.token) return alert('Please login to add a review.');
+            try {
+              setSavingReview(true);
+              await api(`/listings/${id}/reviews`, {
+                method: 'POST',
+                token: me.token,
+                body: { rating, comment }
+              });
+              setComment('');
+              await load();
+              alert('Thanks for your review!');
+            } catch (err) {
+              alert(err.message || 'Failed to add review');
+            } finally {
+              setSavingReview(false);
+            }
+          }}
+          className="reviewBox"
+        >
           <div className="stars">
             {[1,2,3,4,5].map((v) => (
               <button
@@ -172,9 +183,7 @@ export default function ListingDetail() {
                 onMouseLeave={() => setHover(0)}
                 onClick={() => setRating(v)}
                 aria-label={`${v} star`}
-              >
-                ★
-              </button>
+              >★</button>
             ))}
             <span style={{ marginLeft: 8, color: '#555' }}>{rating}/5</span>
           </div>
@@ -190,36 +199,17 @@ export default function ListingDetail() {
         </form>
       </div>
 
-      {/* AI summary */}
-      {hasAI && (
-        loadingAI ? (
-          <Loader text="Summarizing reviews..." />
-        ) : (
-          summary && (
-            <p style={{ marginTop: 12, fontStyle: 'italic' }}>
-              Summary: {summary}
-            </p>
-          )
-        )
-      )}
+      {hasAI && (loadingAI ? <Loader text="Summarizing reviews..." /> : (summary && <p style={{ marginTop: 12, fontStyle: 'italic' }}>Summary: {summary}</p>))}
 
       <style>{`
         .btn { background:#574bff; color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; text-decoration:none }
         .btn.ghost { background:#eef; color:#222 }
         .btn.danger { background:#e53935 }
         .reviewBox { display:grid; gap:8px; max-width:560px; margin-top:8px }
-        .reviewBox textarea {
-          padding:10px 12px; border:1px solid #e3e6ee; border-radius:10px;
-          background:#fbfdff; outline:none; font-size:14px;
-        }
-        .reviewBox textarea:focus {
-          border-color:#6b5cff; box-shadow:0 0 0 3px rgba(107,92,255,.15); background:#fff;
-        }
+        .reviewBox textarea { padding:10px 12px; border:1px solid #e3e6ee; border-radius:10px; background:#fbfdff; outline:none; font-size:14px; }
+        .reviewBox textarea:focus { border-color:#6b5cff; box-shadow:0 0 0 3px rgba(107,92,255,.15); background:#fff; }
         .stars { display:flex; align-items:center; gap:2px; }
-        .star {
-          background:transparent; border:none; font-size:22px; color:#c7c7c7; cursor:pointer;
-          padding:0; line-height:1;
-        }
+        .star { background:transparent; border:none; font-size:22px; color:#c7c7c7; cursor:pointer; padding:0; line-height:1; }
         .star.on { color:#f5b301; }
       `}</style>
     </div>
