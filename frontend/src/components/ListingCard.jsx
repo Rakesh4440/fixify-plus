@@ -58,7 +58,7 @@ export default function ListingCard({ item }) {
         <div style={{ padding: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>
-              {item.title} {item.isVerified ? '✅' : ''}
+              {item.title}
             </div>
             {avg ? (
               <span className="pill" title={`${avg} out of 5`} style={{ marginLeft: 'auto' }}>
