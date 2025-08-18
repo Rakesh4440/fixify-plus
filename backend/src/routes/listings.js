@@ -9,16 +9,26 @@ import { authRequired } from '../middleware/auth.js';
 
 const router = express.Router();
 
-/* ---------------- Ensure uploads go to backend/uploads ---------------- */
+/* ----------------------- Resolve a writable uploads dir ----------------------- */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// routes/ -> .. -> src -> .. -> backend -> uploads
-const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-/* ----------------------------- Multer setup ---------------------------- */
+// Default to project uploads folder (local dev). On Render, set UPLOADS_DIR=/tmp/uploads
+const resolvedUploadsDir = (() => {
+  const envDir = process.env.UPLOADS_DIR;
+  if (envDir && path.isAbsolute(envDir)) return envDir;
+  if (envDir) return path.join(__dirname, '..', '..', envDir); // allow relative path
+  return path.join(__dirname, '..', '..', 'uploads');
+})();
+
+// Ensure it exists
+if (!fs.existsSync(resolvedUploadsDir)) {
+  fs.mkdirSync(resolvedUploadsDir, { recursive: true });
+}
+
+/* -------------------------------- Multer setup ------------------------------- */
 const storage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, uploadsDir),
+  destination: (_, __, cb) => cb(null, resolvedUploadsDir),
   filename: (_, file, cb) => {
     const safe = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     cb(null, Date.now() + '_' + safe);
@@ -26,8 +36,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-/* ---------------------------- List & search ---------------------------- */
-// GET /api/listings  (search + filters + pagination)
+/* ---------------------------- List & search (paged) -------------------------- */
 router.get('/', async (req, res, next) => {
   try {
     const { q, category, type, city, area, pincode } = req.query;
@@ -45,7 +54,7 @@ router.get('/', async (req, res, next) => {
         { location: new RegExp(q, 'i') },
         { category: new RegExp(q, 'i') },
         { city: new RegExp(q, 'i') },
-        { area: new RegExp(q, 'i') },
+      { area: new RegExp(q, 'i') },
         { pincode: new RegExp(q, 'i') }
       ];
     }
@@ -65,8 +74,8 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-/* ----------------------------- Create listing -------------------------- */
-// POST /api/listings  (multipart or json)
+/* ------------------------------- Create listing ------------------------------ */
+// Accepts JSON or multipart; when multipart, include field name "photo"
 router.post('/', upload.any(), authRequired, async (req, res, next) => {
   try {
     const body = { ...(req.body || {}) };
@@ -75,12 +84,17 @@ router.post('/', upload.any(), authRequired, async (req, res, next) => {
       body.isCommunityPosted = body.isCommunityPosted === 'true' || body.isCommunityPosted === true;
     }
 
-    const photo = (req.files || []).find(f => f.fieldname === 'photo') || (req.files || [])[0];
+    const photo =
+      (req.files || []).find((f) => f.fieldname === 'photo') ||
+      (req.files || [])[0];
+
     if (photo) body.photoPath = `/uploads/${photo.filename}`;
 
     const required = ['title', 'category', 'contactNumber', 'type'];
     const missing = required.filter((k) => !body[k]);
-    if (missing.length) return res.status(400).json({ message: `Missing fields: ${missing.join(', ')}` });
+    if (missing.length) {
+      return res.status(400).json({ message: `Missing fields: ${missing.join(', ')}` });
+    }
 
     body.postedBy = req.user.id;
 
@@ -91,8 +105,7 @@ router.post('/', upload.any(), authRequired, async (req, res, next) => {
   }
 });
 
-/* ------------------------------ Read one ------------------------------- */
-// GET /api/listings/:id
+/* ---------------------------------- Read one --------------------------------- */
 router.get('/:id', async (req, res, next) => {
   try {
     const item = await Listing.findById(req.params.id).populate('postedBy', 'name _id');
@@ -103,8 +116,8 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-/* ------------------------------ Update one ----------------------------- */
-// PUT /api/listings/:id  (multipart or json)
+/* --------------------------------- Update one -------------------------------- */
+// Accepts JSON or multipart with "photo" to replace image
 router.put('/:id', upload.any(), authRequired, async (req, res, next) => {
   try {
     const listing = await Listing.findById(req.params.id);
@@ -119,7 +132,10 @@ router.put('/:id', upload.any(), authRequired, async (req, res, next) => {
       body.isCommunityPosted = body.isCommunityPosted === 'true' || body.isCommunityPosted === true;
     }
 
-    const photo = (req.files || []).find(f => f.fieldname === 'photo') || (req.files || [])[0];
+    const photo =
+      (req.files || []).find((f) => f.fieldname === 'photo') ||
+      (req.files || [])[0];
+
     if (photo) body.photoPath = `/uploads/${photo.filename}`;
 
     Object.assign(listing, body);
@@ -130,8 +146,7 @@ router.put('/:id', upload.any(), authRequired, async (req, res, next) => {
   }
 });
 
-/* ------------------------------ Delete one ----------------------------- */
-// DELETE /api/listings/:id
+/* --------------------------------- Delete one -------------------------------- */
 router.delete('/:id', authRequired, async (req, res, next) => {
   try {
     const listing = await Listing.findById(req.params.id);
@@ -146,8 +161,7 @@ router.delete('/:id', authRequired, async (req, res, next) => {
   }
 });
 
-/* ------------------------------ Reviews -------------------------------- */
-// POST /api/listings/:id/reviews  (upsert my review)
+/* ------------------------------------ Reviews -------------------------------- */
 router.post('/:id/reviews', authRequired, async (req, res, next) => {
   try {
     const { rating, comment } = req.body;

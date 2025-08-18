@@ -16,7 +16,7 @@ dotenv.config();
 
 const app = express();
 
-/* ---------- Robust CORS (trims spaces/trailing slashes, handles preflight) ---------- */
+/* ---------- Robust CORS ---------- */
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map(s => s.trim().replace(/\/$/, ''))
@@ -25,48 +25,54 @@ const allowedOrigins = (process.env.CORS_ORIGIN || '')
 app.use(
   cors({
     origin: (origin, cb) => {
-      if (!origin) return cb(null, true); // allow server-to-server/health checks
+      if (!origin) return cb(null, true);
       const o = origin.replace(/\/$/, '');
       if (allowedOrigins.includes(o)) return cb(null, true);
       return cb(new Error(`Not allowed by CORS: ${origin}`));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type','Authorization'],
     optionsSuccessStatus: 204
   })
 );
 app.options('*', cors());
 
-/* ------------------------------- Parsers & logs ------------------------------- */
+/* ---------- Parsers & logs ---------- */
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan('dev'));
 
-/* ----------------------- Serve uploads at /uploads paths ---------------------- */
+/* ---------- Serve uploads from a *resolved* directory ---------- */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadsPath = path.join(__dirname, '..', 'uploads');
 
-// Ensure the folder exists (important on Render)
-if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath, { recursive: true });
+function resolveUploadsDir() {
+  const envDir = process.env.UPLOADS_DIR; // e.g. /tmp/uploads on Render
+  if (envDir && path.isAbsolute(envDir)) return envDir;
+  if (envDir) return path.join(__dirname, '..', envDir);
+  return path.join(__dirname, '..', 'uploads'); // local dev default
+}
 
-app.use(['/uploads', '/api/uploads'], express.static(uploadsPath));
+const uploadsDir = resolveUploadsDir();
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-/* --------------------------------- Healthcheck -------------------------------- */
+app.use(['/uploads', '/api/uploads'], express.static(uploadsDir));
+
+/* ---------- Health ---------- */
 app.get('/api/health', (req, res) =>
-  res.json({ status: 'ok', time: new Date().toISOString(), allowedOrigins })
+  res.json({ status: 'ok', time: new Date().toISOString(), allowedOrigins, uploadsDir })
 );
 
-/* ------------------------------------ APIs ----------------------------------- */
+/* ---------- Routes ---------- */
 app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingRoutes);
 
-/* ------------------------------- Error handlers ------------------------------ */
+/* ---------- Errors ---------- */
 app.use(notFound);
 app.use(errorHandler);
 
-/* --------------------------------- Boot server -------------------------------- */
+/* ---------- Boot ---------- */
 const PORT = process.env.PORT || 5000;
 connectDB(process.env.MONGO_URI).then(() => {
   app.listen(PORT, () => console.log(`API listening on port ${PORT}`));
