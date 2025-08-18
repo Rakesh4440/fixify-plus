@@ -33,6 +33,18 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+/* ------------------------------- Phone helper -------------------------------- */
+function ensurePlus91(phone) {
+  let s = String(phone || '').trim();
+  if (!s) return '';
+  const digits = s.replace(/\D/g, '');
+  if (s.startsWith('+91')) return s;
+  if (digits.startsWith('91') && digits.length >= 12) return '+' + digits;
+  if (digits.length === 10) return '+91' + digits;
+  // fallback: last 10 digits + +91
+  return '+91' + digits.slice(-10);
+}
+
 /* ---------------------------- List & search (paged) -------------------------- */
 router.get('/', async (req, res, next) => {
   try {
@@ -77,10 +89,11 @@ router.post('/', authRequired, upload.single('photo'), async (req, res, next) =>
   try {
     const body = { ...(req.body || {}) };
 
-    // normalize booleans coming from multipart
+    // normalize booleans & phone
     if (typeof body.isCommunityPosted !== 'undefined') {
       body.isCommunityPosted = body.isCommunityPosted === 'true' || body.isCommunityPosted === true;
     }
+    if (body.contactNumber) body.contactNumber = ensurePlus91(body.contactNumber);
 
     if (req.file) {
       body.photoPath = `/uploads/${req.file.filename}`;
@@ -124,9 +137,11 @@ router.put('/:id', authRequired, upload.single('photo'), async (req, res, next) 
     }
 
     const body = { ...(req.body || {}) };
+
     if (typeof body.isCommunityPosted !== 'undefined') {
       body.isCommunityPosted = body.isCommunityPosted === 'true' || body.isCommunityPosted === true;
     }
+    if (body.contactNumber) body.contactNumber = ensurePlus91(body.contactNumber);
 
     if (req.file) {
       body.photoPath = `/uploads/${req.file.filename}`;
