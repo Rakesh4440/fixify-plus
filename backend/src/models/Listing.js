@@ -10,59 +10,50 @@ const reviewSchema = new Schema(
   { timestamps: true }
 );
 
-const reportSchema = new Schema(
-  {
-    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    reason: { type: String, trim: true }
-  },
-  { timestamps: true }
-);
-
 const listingSchema = new Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
     category: { type: String, required: true, trim: true },
-
     postedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     contactNumber: { type: String, required: true, trim: true },
+
+    // flags
     isCommunityPosted: { type: Boolean, default: false },
-
-    // (These exist so current routes don't crash; we'll simplify later)
     isVerified: { type: Boolean, default: false },
-    reviewStatus: { type: String, enum: ['ok', 'under_review'], default: 'ok' },
 
-    // locality
+    // legacy freeform
+    location: { type: String, trim: true },
+
+    // explicit address fields (for filtering)
     state: { type: String, trim: true },
     city: { type: String, trim: true },
     area: { type: String, trim: true },
     pincode: { type: String, trim: true },
-    location: { type: String, trim: true },
 
-    // pricing/type
+    // pricing / type
     price: { type: Number },
     type: { type: String, enum: ['service', 'rental'], required: true },
 
-    // service-only
+    // Service-specific
     serviceType: { type: String, trim: true },
     availability: { type: String, trim: true },
 
-    // rental-only
+    // Rental-specific
     rentalDurationUnit: { type: String, enum: ['hour', 'day', 'week', 'month'] },
     itemCondition: { type: String, trim: true },
 
-    // media
-    photoPath: { type: String, trim: true },
-
-    // community signals
+    // Reviews
     reviews: [reviewSchema],
+
+    // Community endorsements (optional)
     endorsements: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-    reports: [reportSchema]
+
+    // Cloudinary image fields
+    photoPath: { type: String, trim: true },       // https URL to the image
+    photoPublicId: { type: String, trim: true }     // cloudinary public_id (for future delete/replace)
   },
   { timestamps: true }
 );
-
-// speeds up filters & sorting on home
-listingSchema.index({ city: 1, area: 1, pincode: 1, category: 1, type: 1, createdAt: -1 });
 
 export default mongoose.model('Listing', listingSchema);

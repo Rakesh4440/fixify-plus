@@ -1,39 +1,30 @@
 import express from 'express';
-import path from 'path';
-import fs from 'fs';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
+import path from 'path';
 
 import Listing from '../models/Listing.js';
 import { authRequired } from '../middleware/auth.js';
 
-const router = express.Router();
+/* ---------- Cloudinary storage ---------- */
+import cloudinary from '../config/cloudinary.js';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
-/* ----------------------- Resolve a writable uploads dir ----------------------- */
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Default local: backend/uploads. On Render set UPLOADS_DIR=/tmp/uploads
-const uploadsDir = (() => {
-  const envDir = process.env.UPLOADS_DIR;
-  if (envDir && path.isAbsolute(envDir)) return envDir;
-  if (envDir) return path.join(__dirname, '..', '..', envDir);
-  return path.join(__dirname, '..', '..', 'uploads');
-})();
-
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-/* -------------------------------- Multer setup ------------------------------- */
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const safe = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    cb(null, Date.now() + '_' + safe);
-  }
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async (_req, file) => ({
+    folder: 'fixify-plus',
+    resource_type: 'image',
+    format: undefined, // keep original
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 1200, crop: 'limit' }]
+  }),
 });
 const upload = multer({ storage });
 
-/* ------------------------------- Phone helper -------------------------------- */
+const router = express.Router();
+
+/* ---------- phone helper (+91) ---------- */
 function ensurePlus91(phone) {
   let s = String(phone || '').trim();
   if (!s) return '';
@@ -41,15 +32,13 @@ function ensurePlus91(phone) {
   if (s.startsWith('+91')) return s;
   if (digits.startsWith('91') && digits.length >= 12) return '+' + digits;
   if (digits.length === 10) return '+91' + digits;
-  // fallback: last 10 digits + +91
   return '+91' + digits.slice(-10);
 }
 
-/* ---------------------------- List & search (paged) -------------------------- */
+/* ---------- GET /api/listings (with filters + paging) ---------- */
 router.get('/', async (req, res, next) => {
   try {
     const { q, category, type, city, area, pincode } = req.query;
-
     const filter = {};
     if (category) filter.category = category;
     if (type) filter.type = type;
@@ -83,20 +72,21 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-/* ---------------------------------- CREATE ---------------------------------- */
-// Accepts JSON or multipart; when multipart include field name "photo"
+/* ---------- POST /api/listings (create) ---------- */
+// Accepts JSON or multipart; when multipart include field "photo"
 router.post('/', authRequired, upload.single('photo'), async (req, res, next) => {
   try {
     const body = { ...(req.body || {}) };
 
-    // normalize booleans & phone
     if (typeof body.isCommunityPosted !== 'undefined') {
       body.isCommunityPosted = body.isCommunityPosted === 'true' || body.isCommunityPosted === true;
     }
     if (body.contactNumber) body.contactNumber = ensurePlus91(body.contactNumber);
 
     if (req.file) {
-      body.photoPath = `/uploads/${req.file.filename}`;
+      // multer-storage-cloudinary puts secure URL in file.path
+      body.photoPath = req.file.path;           // absolute https URL
+      body.photoPublicId = req.file.filename;   // cloudinary public_id
     }
 
     const required = ['title', 'category', 'contactNumber', 'type'];
@@ -106,7 +96,6 @@ router.post('/', authRequired, upload.single('photo'), async (req, res, next) =>
     }
 
     body.postedBy = req.user.id;
-
     const listing = await Listing.create(body);
     res.status(201).json(listing);
   } catch (err) {
@@ -114,7 +103,7 @@ router.post('/', authRequired, upload.single('photo'), async (req, res, next) =>
   }
 });
 
-/* ----------------------------------- READ ----------------------------------- */
+/* ---------- GET /api/listings/:id ---------- */
 router.get('/:id', async (req, res, next) => {
   try {
     const item = await Listing.findById(req.params.id).populate('postedBy', 'name _id');
@@ -125,7 +114,7 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-/* ---------------------------------- UPDATE ---------------------------------- */
+/* ---------- PUT /api/listings/:id (update) ---------- */
 // Accepts JSON or multipart with "photo" to replace image
 router.put('/:id', authRequired, upload.single('photo'), async (req, res, next) => {
   try {
@@ -144,7 +133,8 @@ router.put('/:id', authRequired, upload.single('photo'), async (req, res, next) 
     if (body.contactNumber) body.contactNumber = ensurePlus91(body.contactNumber);
 
     if (req.file) {
-      body.photoPath = `/uploads/${req.file.filename}`;
+      body.photoPath = req.file.path;         // new https URL
+      body.photoPublicId = req.file.filename;
     }
 
     Object.assign(listing, body);
@@ -155,7 +145,7 @@ router.put('/:id', authRequired, upload.single('photo'), async (req, res, next) 
   }
 });
 
-/* ---------------------------------- DELETE ---------------------------------- */
+/* ---------- DELETE /api/listings/:id ---------- */
 router.delete('/:id', authRequired, async (req, res, next) => {
   try {
     const listing = await Listing.findById(req.params.id);
@@ -170,7 +160,7 @@ router.delete('/:id', authRequired, async (req, res, next) => {
   }
 });
 
-/* --------------------------------- REVIEWS ---------------------------------- */
+/* ---------- POST /api/listings/:id/reviews ---------- */
 router.post('/:id/reviews', authRequired, async (req, res, next) => {
   try {
     const { rating, comment } = req.body;
