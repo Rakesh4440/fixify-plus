@@ -111,40 +111,56 @@ export default function App() {
           </p>
 
           <form className="hero-search" onSubmit={onSearch}>
-            <input
-              placeholder="Search service (plumber, cook...)"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
+  <div className="field">
+    <span>🔍</span>
+    <input
+      placeholder="Search service (plumber, cook...)"
+      value={q}
+      onChange={(e) => setQ(e.target.value)}
+    />
+  </div>
 
-            <select value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="">All types</option>
-              <option value="service">Service</option>
-              <option value="rental">Rental</option>
-            </select>
+  <div className="field">
+    <span>🧰</span>
+    <select value={type} onChange={(e) => setType(e.target.value)}>
+      <option value="">All types</option>
+      <option value="service">Service</option>
+      <option value="rental">Rental</option>
+    </select>
+  </div>
 
-            <input
-              placeholder="City"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            />
+  <div className="field">
+    <span>🏙️</span>
+    <input
+      placeholder="City"
+      value={city}
+      onChange={(e) => setCity(e.target.value)}
+    />
+  </div>
 
-            <input
-              placeholder="Area"
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-            />
+  <div className="field">
+    <span>📍</span>
+    <input
+      placeholder="Area"
+      value={area}
+      onChange={(e) => setArea(e.target.value)}
+    />
+  </div>
 
-            <input
-              placeholder="Pincode"
-              value={pincode}
-              onChange={(e) => setPincode(e.target.value)}
-            />
+  <div className="field">
+    <span>📮</span>
+    <input
+      placeholder="Pincode"
+      value={pincode}
+      onChange={(e) => setPincode(e.target.value)}
+    />
+  </div>
 
-            <button type="submit">Search</button>
-          </form>
-        </div>
-      </section>
+  <button className="search-btn" type="submit">
+    Search
+  </button>
+</form>
+
 
       {/* LISTINGS */}
       <section className="results">
@@ -297,6 +313,49 @@ export default function App() {
           border-radius: 18px;
           box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
+        .hero-search {
+  align-items: center;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+.field span {
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+.field input,
+.field select {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  width: 100%;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #4f46e5, #9333ea);
+  color: #fff;
+  padding: 12px 22px;
+  border-radius: 14px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.search-btn:hover {
+  transform: translateY(-1px);
+}
+
 
         .hero-search input,
         .hero-search select {
