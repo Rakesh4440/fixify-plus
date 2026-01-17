@@ -17,6 +17,10 @@ export default function App() {
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
+  // ✅ USER STATE (frontend only)
+  const token = localStorage.getItem('token');
+  const userInitial = 'R'; // later can decode from JWT
+
   async function load() {
     setLoading(true);
 
@@ -51,17 +55,47 @@ export default function App() {
 
   return (
     <div className="app">
+
       {/* NAVBAR */}
       <header className="navbar">
-        <h1>Fixify+ 🛠️</h1>
-        <nav>
-          <Link to="/post" className="btn primary">Post Listing</Link>
-          <Link to="/login" className="link">Login</Link>
-          <Link to="/register" className="link">Register</Link>
+        <div className="brand">
+          <div className="logo">F+</div>
+          <div>
+            <div className="brand-title">Fixify+</div>
+            <div className="brand-sub">Local Services & Rentals</div>
+          </div>
+        </div>
+
+        <nav className="nav-links">
+          <Link to="/" className="link">Home</Link>
+          <Link to="/post" className="link">Post Service</Link>
+          <Link to="/dashboard" className="link">Dashboard</Link>
         </nav>
+
+        <div className="nav-right">
+          {token ? (
+            <>
+              <div className="avatar">{userInitial}</div>
+              <button
+                className="logout"
+                onClick={() => {
+                  localStorage.removeItem('token');
+                  window.location.reload();
+                }}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="link">Login</Link>
+              <Link to="/register" className="link">Register</Link>
+            </>
+          )}
+        </div>
       </header>
 
-      {/* HERO SECTION */}
+      {/* HERO */}
       <section className="hero">
         <div className="hero-inner">
           <span className="badge">🚀 Trusted by local professionals</span>
@@ -72,11 +106,10 @@ export default function App() {
           </h2>
 
           <p>
-            Discover verified professionals for plumbing, cleaning, electrical
-            work, rentals, and more — all in one place.
+            Discover verified professionals for plumbing, cleaning,
+            electrical work, rentals, and more — all in one place.
           </p>
 
-          {/* SEARCH BAR */}
           <form className="hero-search" onSubmit={onSearch}>
             <input
               placeholder="Search service (plumber, cook...)"
@@ -126,17 +159,11 @@ export default function App() {
             </div>
 
             <div className="pager">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
+              <button disabled={page === 1} onClick={() => setPage(p => p - 1)}>
                 Prev
               </button>
               <span>Page {page} / {pages}</span>
-              <button
-                disabled={page === pages}
-                onClick={() => setPage((p) => p + 1)}
-              >
+              <button disabled={page === pages} onClick={() => setPage(p => p + 1)}>
                 Next
               </button>
             </div>
@@ -159,7 +186,7 @@ export default function App() {
         .navbar {
           position: sticky;
           top: 0;
-          z-index: 10;
+          z-index: 20;
           background: #fff;
           padding: 14px 20px;
           display: flex;
@@ -168,14 +195,42 @@ export default function App() {
           border-bottom: 1px solid #eee;
         }
 
-        .navbar h1 {
-          margin: 0;
-          font-size: 20px;
+        .brand {
+          display: flex;
+          gap: 10px;
+          align-items: center;
         }
 
-        nav {
+        .logo {
+          width: 38px;
+          height: 38px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #6366f1, #a855f7);
+          color: #fff;
+          font-weight: 800;
           display: flex;
-          gap: 14px;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .brand-title {
+          font-weight: 800;
+          font-size: 18px;
+        }
+
+        .brand-sub {
+          font-size: 12px;
+          color: #777;
+        }
+
+        .nav-links {
+          display: flex;
+          gap: 16px;
+        }
+
+        .nav-right {
+          display: flex;
+          gap: 12px;
           align-items: center;
         }
 
@@ -185,13 +240,26 @@ export default function App() {
           font-weight: 600;
         }
 
-        .btn.primary {
-          background: #6366f1;
+        .avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: #4f46e5;
           color: #fff;
-          padding: 8px 14px;
-          border-radius: 10px;
-          text-decoration: none;
           font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .logout {
+          border: 2px solid #4f46e5;
+          background: transparent;
+          color: #4f46e5;
+          padding: 6px 12px;
+          border-radius: 10px;
+          cursor: pointer;
+          font-weight: 600;
         }
 
         /* HERO */
@@ -201,24 +269,8 @@ export default function App() {
           text-align: center;
         }
 
-        .hero-inner {
-          max-width: 1000px;
-          margin: auto;
-        }
-
-        .badge {
-          display: inline-block;
-          background: #fff;
-          padding: 6px 12px;
-          border-radius: 999px;
-          font-weight: 600;
-          font-size: 13px;
-          margin-bottom: 16px;
-        }
-
         .hero h2 {
           font-size: 42px;
-          margin: 12px 0;
           font-weight: 800;
         }
 
@@ -226,15 +278,17 @@ export default function App() {
           color: #6366f1;
         }
 
-        .hero p {
-          color: #555;
-          font-size: 16px;
-          max-width: 700px;
-          margin: 0 auto 30px;
+        .badge {
+          background: #fff;
+          padding: 6px 14px;
+          border-radius: 999px;
+          font-weight: 600;
+          display: inline-block;
+          margin-bottom: 16px;
         }
 
-        /* SEARCH */
         .hero-search {
+          margin-top: 30px;
           display: grid;
           grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
           gap: 12px;
@@ -249,20 +303,17 @@ export default function App() {
           padding: 12px 14px;
           border-radius: 12px;
           border: 1px solid #e5e7eb;
-          font-size: 14px;
         }
 
         .hero-search button {
           background: #4f46e5;
           color: #fff;
           border: none;
-          padding: 12px 20px;
           border-radius: 12px;
           font-weight: 700;
           cursor: pointer;
         }
 
-        /* RESULTS */
         .results {
           padding: 40px 20px;
         }
@@ -281,17 +332,16 @@ export default function App() {
         }
 
         .pager button {
+          background: #e0e7ff;
+          border: none;
           padding: 8px 14px;
           border-radius: 10px;
-          border: none;
-          background: #e0e7ff;
-          cursor: pointer;
           font-weight: 600;
         }
 
         .muted {
-          text-align: center;
           color: #777;
+          text-align: center;
         }
 
         @media (max-width: 900px) {
@@ -299,8 +349,8 @@ export default function App() {
             grid-template-columns: 1fr 1fr;
           }
 
-          .hero h2 {
-            font-size: 32px;
+          .nav-links {
+            display: none;
           }
         }
       `}</style>
