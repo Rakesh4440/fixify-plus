@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-
 import ListingCard from './components/ListingCard.jsx';
 import Footer from './components/Footer.jsx';
 
@@ -20,17 +19,18 @@ export default function App() {
 
   async function load() {
     setLoading(true);
+
     const params = new URLSearchParams({
-      ...(q ? { q } : {}),
-      ...(type ? { type } : {}),
-      ...(city ? { city } : {}),
-      ...(area ? { area } : {}),
-      ...(pincode ? { pincode } : {}),
-      page: String(page),
-      limit: '12'
+      ...(q && { q }),
+      ...(type && { type }),
+      ...(city && { city }),
+      ...(area && { area }),
+      ...(pincode && { pincode }),
+      page,
+      limit: 12
     });
 
-    const res = await fetch(`${API}/listings?${params.toString()}`);
+    const res = await fetch(`${API}/listings?${params}`);
     const data = await res.json();
 
     setItems(data.items || []);
@@ -40,7 +40,7 @@ export default function App() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line
   }, [page]);
 
   function onSearch(e) {
@@ -50,233 +50,257 @@ export default function App() {
   }
 
   return (
-    <div className="wrap">
-      {/* ================= NAVBAR ================= */}
-      <header className="topbar">
+    <div className="app">
+      {/* NAVBAR */}
+      <header className="navbar">
         <h1>Fixify+ 🛠️</h1>
         <nav>
-          <Link to="/post" className="btn">Post Listing</Link>
-          <Link to="/login" className="lnk">Login</Link>
-          <Link to="/register" className="lnk">Register</Link>
+          <Link to="/post" className="btn primary">Post Listing</Link>
+          <Link to="/login" className="link">Login</Link>
+          <Link to="/register" className="link">Register</Link>
         </nav>
       </header>
 
-      {/* ================= HERO SECTION ================= */}
+      {/* HERO SECTION */}
       <section className="hero">
-        <span className="hero-badge">Trusted Local Marketplace</span>
+        <div className="hero-inner">
+          <span className="badge">🚀 Trusted by local professionals</span>
 
-        <h2>
-          Find Trusted <span>Local Services</span><br />
-          & Community Rentals
-        </h2>
+          <h2>
+            Find & Book <br />
+            <span>Local Services & Rentals</span>
+          </h2>
 
-        <p>
-          Discover verified professionals for plumbing, cleaning,
-          electrical work, rentals, and more — all in one place.
-        </p>
+          <p>
+            Discover verified professionals for plumbing, cleaning, electrical
+            work, rentals, and more — all in one place.
+          </p>
 
-        <form className="hero-search" onSubmit={onSearch}>
-          <input
-            placeholder="Search service (plumber, cook...)"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+          {/* SEARCH BAR */}
+          <form className="hero-search" onSubmit={onSearch}>
+            <input
+              placeholder="Search service (plumber, cook...)"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
 
-          <select value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="">All types</option>
-            <option value="service">Service</option>
-            <option value="rental">Rental</option>
-          </select>
+            <select value={type} onChange={(e) => setType(e.target.value)}>
+              <option value="">All types</option>
+              <option value="service">Service</option>
+              <option value="rental">Rental</option>
+            </select>
 
-          <input
-            placeholder="City"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-          />
+            <input
+              placeholder="City"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            />
 
-          <button className="btn">Search</button>
-        </form>
+            <input
+              placeholder="Area"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+            />
+
+            <input
+              placeholder="Pincode"
+              value={pincode}
+              onChange={(e) => setPincode(e.target.value)}
+            />
+
+            <button type="submit">Search</button>
+          </form>
+        </div>
       </section>
 
-      {/* ================= LISTINGS ================= */}
-      {loading ? (
-        <p className="muted" style={{ padding: '16px' }}>Loading listings…</p>
-      ) : items.length ? (
-        <>
-          <div className="grid">
-            {items.map((it) => (
-              <ListingCard key={it._id} item={it} />
-            ))}
-          </div>
+      {/* LISTINGS */}
+      <section className="results">
+        {loading ? (
+          <p className="muted">Loading listings...</p>
+        ) : items.length ? (
+          <>
+            <div className="grid">
+              {items.map((it) => (
+                <ListingCard key={it._id} item={it} />
+              ))}
+            </div>
 
-          <div className="pager">
-            <button
-              className="btn ghost"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Prev
-            </button>
+            <div className="pager">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Prev
+              </button>
+              <span>Page {page} / {pages}</span>
+              <button
+                disabled={page === pages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="muted">No listings found</p>
+        )}
+      </section>
 
-            <span>Page {page} / {pages}</span>
-
-            <button
-              className="btn ghost"
-              disabled={page >= pages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </button>
-          </div>
-        </>
-      ) : (
-        <div className="empty">
-          <h3>No results</h3>
-          <p className="muted">
-            Try changing filters or post the first listing in your area.
-          </p>
-          <Link to="/post" className="btn">Post a listing</Link>
-        </div>
-      )}
-
-      {/* ================= FOOTER ================= */}
       <Footer />
 
-      {/* ================= STYLES ================= */}
+      {/* STYLES */}
       <style>{`
-        .wrap {
+        .app {
+          background: #f8fafc;
           min-height: 100vh;
-          background: #f7f8fb;
         }
 
         /* NAVBAR */
-        .topbar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 14px 20px;
-          background: #fff;
-          border-bottom: 1px solid #eee;
+        .navbar {
           position: sticky;
           top: 0;
           z-index: 10;
+          background: #fff;
+          padding: 14px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 1px solid #eee;
+        }
+
+        .navbar h1 {
+          margin: 0;
+          font-size: 20px;
         }
 
         nav {
           display: flex;
-          gap: 12px;
+          gap: 14px;
           align-items: center;
+        }
+
+        .link {
+          text-decoration: none;
+          color: #333;
+          font-weight: 600;
+        }
+
+        .btn.primary {
+          background: #6366f1;
+          color: #fff;
+          padding: 8px 14px;
+          border-radius: 10px;
+          text-decoration: none;
+          font-weight: 700;
         }
 
         /* HERO */
         .hero {
-          margin: 20px;
-          padding: 50px 30px;
-          border-radius: 28px;
-          background: linear-gradient(
-            135deg,
-            #eef2ff 0%,
-            #ffffff 40%,
-            #e0f2fe 100%
-          );
+          background: linear-gradient(135deg, #eef2ff, #fdf4ff);
+          padding: 80px 20px 100px;
           text-align: center;
         }
 
-        .hero-badge {
+        .hero-inner {
+          max-width: 1000px;
+          margin: auto;
+        }
+
+        .badge {
           display: inline-block;
-          padding: 6px 14px;
+          background: #fff;
+          padding: 6px 12px;
           border-radius: 999px;
-          background: #eef2ff;
-          color: #3730a3;
-          font-weight: 700;
+          font-weight: 600;
           font-size: 13px;
-          margin-bottom: 14px;
+          margin-bottom: 16px;
         }
 
         .hero h2 {
           font-size: 42px;
-          line-height: 1.2;
-          margin: 10px 0;
-          color: #0f172a;
+          margin: 12px 0;
+          font-weight: 800;
         }
 
         .hero h2 span {
-          color: #4f46e5;
+          color: #6366f1;
         }
 
         .hero p {
-          max-width: 700px;
-          margin: 0 auto 24px;
-          color: #64748b;
+          color: #555;
           font-size: 16px;
+          max-width: 700px;
+          margin: 0 auto 30px;
         }
 
+        /* SEARCH */
         .hero-search {
-          max-width: 900px;
-          margin: 0 auto;
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr auto;
+          grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
           gap: 12px;
           background: #fff;
-          padding: 14px;
+          padding: 16px;
           border-radius: 18px;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
 
-        /* COMMON */
-        input, select {
+        .hero-search input,
+        .hero-search select {
           padding: 12px 14px;
-          border: 1px solid #e3e6ee;
           border-radius: 12px;
+          border: 1px solid #e5e7eb;
           font-size: 14px;
         }
 
+        .hero-search button {
+          background: #4f46e5;
+          color: #fff;
+          border: none;
+          padding: 12px 20px;
+          border-radius: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        /* RESULTS */
+        .results {
+          padding: 40px 20px;
+        }
+
         .grid {
-          padding: 24px;
           display: grid;
           gap: 20px;
           grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
         }
 
         .pager {
+          margin-top: 24px;
           display: flex;
           justify-content: center;
           gap: 12px;
-          padding: 20px 0 30px;
         }
 
-        .btn {
-          background: #4f46e5;
-          color: #fff;
+        .pager button {
+          padding: 8px 14px;
+          border-radius: 10px;
           border: none;
-          padding: 10px 16px;
-          border-radius: 12px;
-          font-weight: 600;
+          background: #e0e7ff;
           cursor: pointer;
-          text-decoration: none;
-        }
-
-        .btn.ghost {
-          background: #eef2ff;
-          color: #3730a3;
-        }
-
-        .lnk {
-          color: #333;
           font-weight: 600;
-          text-decoration: none;
         }
 
         .muted {
-          color: #64748b;
+          text-align: center;
+          color: #777;
         }
 
         @media (max-width: 900px) {
-          .hero h2 {
-            font-size: 30px;
-          }
           .hero-search {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .hero h2 {
+            font-size: 32px;
           }
         }
       `}</style>
