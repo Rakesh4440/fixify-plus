@@ -61,26 +61,42 @@ export default function App() {
         </nav>
       </header>
 
-      {/* ================= SEARCH FILTERS ================= */}
-      <form className="filters" onSubmit={onSearch}>
-        <input
-          placeholder="Search keyword…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
+      {/* ================= HERO SECTION ================= */}
+      <section className="hero">
+        <span className="hero-badge">Trusted Local Marketplace</span>
 
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="">All types</option>
-          <option value="service">Service</option>
-          <option value="rental">Rental</option>
-        </select>
+        <h2>
+          Find Trusted <span>Local Services</span><br />
+          & Community Rentals
+        </h2>
 
-        <input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
-        <input placeholder="Area" value={area} onChange={(e) => setArea(e.target.value)} />
-        <input placeholder="Pincode" value={pincode} onChange={(e) => setPincode(e.target.value)} />
+        <p>
+          Discover verified professionals for plumbing, cleaning,
+          electrical work, rentals, and more — all in one place.
+        </p>
 
-        <button className="btn" type="submit">Search</button>
-      </form>
+        <form className="hero-search" onSubmit={onSearch}>
+          <input
+            placeholder="Search service (plumber, cook...)"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+
+          <select value={type} onChange={(e) => setType(e.target.value)}>
+            <option value="">All types</option>
+            <option value="service">Service</option>
+            <option value="rental">Rental</option>
+          </select>
+
+          <input
+            placeholder="City"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+          />
+
+          <button className="btn">Search</button>
+        </form>
+      </section>
 
       {/* ================= LISTINGS ================= */}
       {loading ? (
@@ -131,25 +147,19 @@ export default function App() {
         .wrap {
           min-height: 100vh;
           background: #f7f8fb;
-          display: flex;
-          flex-direction: column;
         }
 
+        /* NAVBAR */
         .topbar {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 14px 16px;
+          padding: 14px 20px;
           background: #fff;
           border-bottom: 1px solid #eee;
           position: sticky;
           top: 0;
           z-index: 10;
-        }
-
-        .topbar h1 {
-          margin: 0;
-          font-size: 20px;
         }
 
         nav {
@@ -158,79 +168,115 @@ export default function App() {
           align-items: center;
         }
 
-        .filters {
-          display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
-          gap: 10px;
-          padding: 14px 16px;
-          background: #fff;
-          border-bottom: 1px solid #eee;
+        /* HERO */
+        .hero {
+          margin: 20px;
+          padding: 50px 30px;
+          border-radius: 28px;
+          background: linear-gradient(
+            135deg,
+            #eef2ff 0%,
+            #ffffff 40%,
+            #e0f2fe 100%
+          );
+          text-align: center;
         }
 
+        .hero-badge {
+          display: inline-block;
+          padding: 6px 14px;
+          border-radius: 999px;
+          background: #eef2ff;
+          color: #3730a3;
+          font-weight: 700;
+          font-size: 13px;
+          margin-bottom: 14px;
+        }
+
+        .hero h2 {
+          font-size: 42px;
+          line-height: 1.2;
+          margin: 10px 0;
+          color: #0f172a;
+        }
+
+        .hero h2 span {
+          color: #4f46e5;
+        }
+
+        .hero p {
+          max-width: 700px;
+          margin: 0 auto 24px;
+          color: #64748b;
+          font-size: 16px;
+        }
+
+        .hero-search {
+          max-width: 900px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr auto;
+          gap: 12px;
+          background: #fff;
+          padding: 14px;
+          border-radius: 18px;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        /* COMMON */
         input, select {
-          padding: 10px 12px;
+          padding: 12px 14px;
           border: 1px solid #e3e6ee;
-          background: #fbfdff;
-          border-radius: 10px;
-          outline: none;
+          border-radius: 12px;
           font-size: 14px;
         }
 
-        input:focus, select:focus {
-          border-color: #6b5cff;
-          box-shadow: 0 0 0 3px rgba(107,92,255,0.15);
-          background: #fff;
-        }
-
         .grid {
-          padding: 16px;
+          padding: 24px;
           display: grid;
-          gap: 16px;
+          gap: 20px;
           grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
         }
 
         .pager {
           display: flex;
-          gap: 12px;
-          align-items: center;
           justify-content: center;
+          gap: 12px;
           padding: 20px 0 30px;
         }
 
-        .empty {
-          padding: 40px 16px;
-          text-align: center;
-        }
-
-        .muted {
-          color: #777;
-        }
-
         .btn {
-          background: #574bff;
+          background: #4f46e5;
           color: #fff;
           border: none;
-          padding: 10px 14px;
-          border-radius: 10px;
-          cursor: pointer;
+          padding: 10px 16px;
+          border-radius: 12px;
           font-weight: 600;
+          cursor: pointer;
           text-decoration: none;
         }
 
         .btn.ghost {
-          background: #eef0ff;
-          color: #393a7c;
+          background: #eef2ff;
+          color: #3730a3;
         }
 
         .lnk {
           color: #333;
-          text-decoration: none;
           font-weight: 600;
+          text-decoration: none;
         }
 
-        @media (max-width: 960px) {
-          .filters {
-            grid-template-columns: 1fr 1fr;
+        .muted {
+          color: #64748b;
+        }
+
+        @media (max-width: 900px) {
+          .hero h2 {
+            font-size: 30px;
+          }
+          .hero-search {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
