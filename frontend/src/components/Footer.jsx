@@ -2,97 +2,116 @@ import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
-    <footer style={styles.footer}>
-      <div style={styles.grid}>
+    <footer className="footer">
+      <div className="footer-inner">
 
-        {/* Brand */}
-        <div>
-          <h2 style={styles.logo}>Fixify+</h2>
-          <p style={styles.text}>
-            Connecting communities with trusted local services and rentals.
-            Quality, reliability, and trust.
+        {/* BRAND */}
+        <div className="footer-col brand">
+          <div className="logo">Fixify+</div>
+          <p>
+            Your trusted marketplace for local services and community rentals.
+            Find verified professionals near you with ease.
           </p>
         </div>
 
-        {/* Quick Links */}
-        <div>
-          <h4 style={styles.heading}>Quick Links</h4>
-          <Link style={styles.link} to="/">Home</Link>
-          <Link style={styles.link} to="/post">Post Listing</Link>
-          <Link style={styles.link} to="/login">Login</Link>
-          <Link style={styles.link} to="/register">Register</Link>
+        {/* LINKS */}
+        <div className="footer-col">
+          <h4>Explore</h4>
+          <Link to="/">Home</Link>
+          <Link to="/post">Post Listing</Link>
+          <Link to="/dashboard">Dashboard</Link>
         </div>
 
-        {/* Popular Services */}
-        <div>
-          <h4 style={styles.heading}>Popular Services</h4>
-          <p style={styles.text}>Plumbing</p>
-          <p style={styles.text}>Electrical</p>
-          <p style={styles.text}>Cleaning</p>
-          <p style={styles.text}>Carpentry</p>
+        <div className="footer-col">
+          <h4>Account</h4>
+          <Link to="/login">Login</Link>
+          <Link to="/register">Register</Link>
         </div>
 
-        {/* Newsletter */}
-        <div>
-          <h4 style={styles.heading}>Stay Updated</h4>
-          <p style={styles.text}>Subscribe for latest updates.</p>
-          <input
-            placeholder="Your email"
-            style={styles.input}
-          />
+        <div className="footer-col">
+          <h4>Support</h4>
+          <a href="#">Help Center</a>
+          <a href="#">Safety Tips</a>
+          <a href="#">Contact Us</a>
         </div>
-
       </div>
 
-      <div style={styles.bottom}>
-        © {new Date().getFullYear()} Fixify+. All rights reserved.
+      {/* BOTTOM BAR */}
+      <div className="footer-bottom">
+        © {new Date().getFullYear()} Fixify+ • Built with ❤️ for local communities
       </div>
+
+      {/* STYLES */}
+      <style>{`
+        .footer {
+          margin-top: 80px;
+          background: linear-gradient(135deg, #eef2ff, #fdf4ff);
+          padding: 60px 20px 0;
+        }
+
+        .footer-inner {
+          max-width: 1100px;
+          margin: auto;
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr 1fr;
+          gap: 30px;
+        }
+
+        .footer-col h4 {
+          margin-bottom: 12px;
+          font-size: 15px;
+          font-weight: 700;
+          color: #1f2937;
+        }
+
+        .footer-col a {
+          display: block;
+          text-decoration: none;
+          color: #4b5563;
+          margin-bottom: 8px;
+          font-size: 14px;
+        }
+
+        .footer-col a:hover {
+          color: #4f46e5;
+        }
+
+        .brand .logo {
+          font-size: 22px;
+          font-weight: 900;
+          color: #4f46e5;
+          margin-bottom: 10px;
+        }
+
+        .brand p {
+          font-size: 14px;
+          color: #555;
+          line-height: 1.6;
+          max-width: 320px;
+        }
+
+        .footer-bottom {
+          margin-top: 40px;
+          padding: 16px;
+          text-align: center;
+          font-size: 13px;
+          color: #6b7280;
+          border-top: 1px solid rgba(0,0,0,0.08);
+          background: rgba(255,255,255,0.6);
+        }
+
+        @media (max-width: 900px) {
+          .footer-inner {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .footer-inner {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
     </footer>
   );
 }
-
-const styles = {
-  footer: {
-    background: '#0f172a',
-    color: '#e5e7eb',
-    padding: '40px 24px 20px',
-    marginTop: '60px'
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '24px',
-    maxWidth: '1100px',
-    margin: '0 auto'
-  },
-  logo: {
-    marginBottom: 8
-  },
-  heading: {
-    marginBottom: 10
-  },
-  text: {
-    color: '#94a3b8',
-    fontSize: 14,
-    marginBottom: 6
-  },
-  link: {
-    display: 'block',
-    color: '#e5e7eb',
-    textDecoration: 'none',
-    marginBottom: 6,
-    fontSize: 14
-  },
-  input: {
-    padding: '8px 10px',
-    borderRadius: 6,
-    border: 'none',
-    width: '100%'
-  },
-  bottom: {
-    textAlign: 'center',
-    marginTop: 30,
-    fontSize: 13,
-    color: '#94a3b8'
-  }
-};
