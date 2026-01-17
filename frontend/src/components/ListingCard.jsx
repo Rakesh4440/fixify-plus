@@ -2,23 +2,14 @@ import { Link } from 'react-router-dom';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/api$/, '');
 
-function normalizePhone(phone) {
-  if (!phone) return '';
-  let d = phone.replace(/\D/g, '');
+// Normalize phone for WhatsApp (India)
+function toE164IN(phone) {
+  let d = String(phone || '').replace(/\D/g, '');
+  if (!d) return '';
+  d = d.replace(/^0+/, '');
+  if (d.startsWith('91') && d.length >= 12) return d;
   if (d.length === 10) return '91' + d;
-  if (d.startsWith('91')) return d;
-  return d;
-}
-
-function categoryColor(cat) {
-  switch (cat?.toLowerCase()) {
-    case 'plumbing': return 'from-blue-500 to-cyan-400';
-    case 'electrical': return 'from-yellow-400 to-orange-400';
-    case 'cleaning': return 'from-pink-500 to-rose-400';
-    case 'carpentry': return 'from-amber-600 to-yellow-500';
-    case 'gardening': return 'from-green-500 to-emerald-400';
-    default: return 'from-indigo-500 to-purple-500';
-  }
+  return '91' + d.slice(-10);
 }
 
 export default function ListingCard({ item }) {
@@ -34,12 +25,15 @@ export default function ListingCard({ item }) {
     pincode,
     contactNumber,
     photoPath,
-    reviews = []
+    reviews = [],
+    isVerified
   } = item;
 
-  const rating =
+  const avg =
     reviews.length > 0
-      ? (reviews.reduce((a, b) => a + (b.rating || 0), 0) / reviews.length).toFixed(1)
+      ? (
+          reviews.reduce((a, b) => a + (b.rating || 0), 0) / reviews.length
+        ).toFixed(1)
       : null;
 
   const imgSrc = photoPath
@@ -48,29 +42,45 @@ export default function ListingCard({ item }) {
       : `${API_BASE}${photoPath}`
     : null;
 
-  return (
-    <div className={`card ${categoryColor(category)}`}>
-      {/* COLOR BAR */}
-      <div className="top-glow" />
+  const waHref = contactNumber
+    ? `https://wa.me/${toE164IN(contactNumber)}`
+    : '#';
 
+  const callHref = contactNumber
+    ? `tel:${contactNumber.replace(/\s/g, '')}`
+    : '#';
+
+  return (
+    <div className="card">
       {/* IMAGE */}
-      <Link to={`/listing/${_id}`} className="img-wrap">
-        {imgSrc ? <img src={imgSrc} alt={title} /> : <div className="no-img">No Image</div>}
-        <span className="badge">{category}</span>
+      <Link to={`/listing/${_id}`} className="imgWrap">
+        {imgSrc ? (
+          <img src={imgSrc} alt={title} />
+        ) : (
+          <div className="placeholder">No Image</div>
+        )}
+        <span className="pill">{category}</span>
       </Link>
 
       {/* CONTENT */}
       <div className="content">
-        <h3>{title}</h3>
+        <div className="titleRow">
+          <h3>{title}</h3>
+          {isVerified && <span className="verified">✔</span>}
+        </div>
 
         <p className="meta">
           {type} • {[area, city, pincode].filter(Boolean).join(', ')}
         </p>
 
         <div className="rating">
-          {rating ? (
+          {avg ? (
             <>
-              <span className="stars">★ {rating}</span>
+              <span className="stars">
+                {'★'.repeat(Math.round(avg))}
+                {'☆'.repeat(5 - Math.round(avg))}
+              </span>
+              <span className="score">{avg}</span>
               <span className="count">({reviews.length})</span>
             </>
           ) : (
@@ -80,20 +90,13 @@ export default function ListingCard({ item }) {
 
         {/* ACTIONS */}
         <div className="actions">
-          <a
-            href={`https://wa.me/${normalizePhone(contactNumber)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="btn whatsapp"
-          >
+          <a href={waHref} target="_blank" rel="noreferrer" className="btn whatsapp">
             WhatsApp
           </a>
-
-          <a href={`tel:${contactNumber}`} className="btn call">
+          <a href={callHref} className="btn call">
             Call
           </a>
-
-          <Link to={`/listing/${_id}`} className="btn view">
+          <Link to={`/listing/${_id}`} className="btn ghost">
             View
           </Link>
         </div>
@@ -102,38 +105,34 @@ export default function ListingCard({ item }) {
       {/* STYLES */}
       <style>{`
         .card {
-          position: relative;
           background: #fff;
-          border-radius: 18px;
-          overflow: hidden;
+          border-radius: 16px;
           box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-          transition: all .25s ease;
+          overflow: hidden;
+          transition: transform .2s ease, box-shadow .2s ease;
+          display: flex;
+          flex-direction: column;
         }
 
         .card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 18px 40px rgba(99,102,241,0.25);
+          transform: translateY(-4px);
+          box-shadow: 0 16px 40px rgba(0,0,0,0.12);
         }
 
-        .top-glow {
-          height: 5px;
-          background: linear-gradient(90deg, var(--tw-gradient-stops));
-        }
-
-        .img-wrap {
+        .imgWrap {
           position: relative;
           height: 180px;
           background: #f1f5f9;
           display: block;
         }
 
-        .img-wrap img {
+        .imgWrap img {
           width: 100%;
           height: 100%;
           object-fit: cover;
         }
 
-        .no-img {
+        .placeholder {
           height: 100%;
           display: flex;
           align-items: center;
@@ -142,45 +141,61 @@ export default function ListingCard({ item }) {
           font-weight: 600;
         }
 
-        .badge {
+        .pill {
           position: absolute;
-          top: 12px;
-          right: 12px;
-          background: rgba(255,255,255,0.95);
-          padding: 6px 12px;
+          top: 10px;
+          right: 10px;
+          background: #eef2ff;
+          color: #3730a3;
+          padding: 6px 10px;
           border-radius: 999px;
           font-size: 12px;
           font-weight: 700;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.15);
         }
 
         .content {
-          padding: 14px 16px 18px;
+          padding: 14px 16px 16px;
+        }
+
+        .titleRow {
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
         h3 {
           margin: 0;
           font-size: 16px;
-          font-weight: 800;
+          font-weight: 700;
           color: #0f172a;
         }
 
+        .verified {
+          color: #16a34a;
+          font-size: 14px;
+        }
+
         .meta {
+          margin: 4px 0;
           font-size: 13px;
           color: #64748b;
-          margin: 4px 0;
         }
 
         .rating {
           display: flex;
-          gap: 6px;
           align-items: center;
+          gap: 6px;
           margin-top: 6px;
         }
 
         .stars {
+          color: #facc15;
+          letter-spacing: 1px;
+        }
+
+        .score {
           font-weight: 700;
-          color: #f59e0b;
+          font-size: 14px;
         }
 
         .count {
@@ -211,18 +226,18 @@ export default function ListingCard({ item }) {
         }
 
         .btn.call {
-          background: #6366f1;
+          background: #4f46e5;
           color: #fff;
         }
 
-        .btn.view {
+        .btn.ghost {
           background: #eef2ff;
           color: #3730a3;
         }
 
         .muted {
-          color: #94a3b8;
           font-size: 13px;
+          color: #94a3b8;
         }
       `}</style>
     </div>
