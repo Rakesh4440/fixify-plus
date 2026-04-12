@@ -1,11 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ListingCard from './components/ListingCard.jsx';
 import Footer from './components/Footer.jsx';
 
 const API = import.meta.env.VITE_API_URL;
 
+const quickFilters = [
+  { label: 'Emergency Electrician', q: 'electrician' },
+  { label: 'House Cleaning', q: 'cleaning' },
+  { label: 'Bike Rentals', q: 'bike', type: 'rental' },
+  { label: 'Plumbing', q: 'plumber', type: 'service' }
+];
+
+function decodeUserToken() {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return { token, role: payload.role, id: payload.id };
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
+  const me = useMemo(() => decodeUserToken(), []);
+
   const [q, setQ] = useState('');
   const [type, setType] = useState('');
   const [city, setCity] = useState('');
@@ -15,11 +36,8 @@ export default function App() {
 
   const [items, setItems] = useState([]);
   const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-
-  // ✅ USER STATE (frontend only)
-  const token = localStorage.getItem('token');
-  const userInitial = 'R'; // later can decode from JWT
 
   async function load() {
     setLoading(true);
@@ -39,12 +57,13 @@ export default function App() {
 
     setItems(data.items || []);
     setPages(data.pages || 1);
+    setTotal(data.total || 0);
     setLoading(false);
   }
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   function onSearch(e) {
@@ -53,13 +72,21 @@ export default function App() {
     load();
   }
 
-  return (
-    <div className="app">
+  function applyQuickFilter(filter) {
+    setQ(filter.q || '');
+    setType(filter.type || '');
+    setPage(1);
 
-      {/* NAVBAR */}
+    setTimeout(() => {
+      load();
+    }, 0);
+  }
+
+  return (
+    <div className="page-shell">
       <header className="navbar">
         <div className="brand">
-          <div className="logo">F+</div>
+          <div className="logo-chip">F+</div>
           <div>
             <div className="brand-title">Fixify+</div>
             <div className="brand-sub">Local Services & Rentals</div>
@@ -73,9 +100,9 @@ export default function App() {
         </nav>
 
         <div className="nav-right">
-          {token ? (
+          {me ? (
             <>
-              <div className="avatar">{userInitial}</div>
+              <div className="avatar">{me.role?.[0]?.toUpperCase() || 'U'}</div>
               <button
                 className="logout"
                 onClick={() => {
@@ -95,75 +122,86 @@ export default function App() {
         </div>
       </header>
 
-      {/* HERO */}
-      <section className="hero">
-        <div className="hero-inner">
-          <span className="badge">🚀 Trusted by local professionals</span>
+      <section className="hero-section">
+        <div className="hero">
+          <div className="hero-content">
+            <span className="badge">🚀 Production-ready local marketplace UX</span>
+            <h1>
+              Book trusted local help in <span>minutes</span>
+            </h1>
+            <p>
+              Discover nearby professionals, compare options, and connect instantly through call or WhatsApp.
+            </p>
 
-          <h2>
-            Find & Book <br />
-            <span>Local Services & Rentals</span>
-          </h2>
+            <div className="quick-filters">
+              {quickFilters.map((filter) => (
+                <button key={filter.label} type="button" className="quick-chip" onClick={() => applyQuickFilter(filter)}>
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <p>
-            Discover verified professionals for plumbing, cleaning,
-            electrical work, rentals, and more — all in one place.
-          </p>
+          <div className="hero-metrics">
+            <div className="metric-card">
+              <span>Total listings</span>
+              <strong>{total}</strong>
+            </div>
+            <div className="metric-card">
+              <span>Available cities</span>
+              <strong>{new Set(items.map((it) => it.city).filter(Boolean)).size || '-'}</strong>
+            </div>
+            <div className="metric-card">
+              <span>Community posts</span>
+              <strong>{items.filter((it) => it.isCommunityPosted).length}</strong>
+            </div>
+          </div>
+        </div>
 
-          <form className="hero-search" onSubmit={onSearch}>
-  <div className="field">
-    <span>🔍</span>
-    <input
-      placeholder="Search service (plumber, cook...)"
-      value={q}
-      onChange={(e) => setQ(e.target.value)}
-    />
-  </div>
+        <form className="hero-search" onSubmit={onSearch}>
+          <div className="field">
+            <span>🔍</span>
+            <input
+              placeholder="Search service (plumber, cook...)"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
 
-  <div className="field">
-    <span>🧰</span>
-    <select value={type} onChange={(e) => setType(e.target.value)}>
-      <option value="">All types</option>
-      <option value="service">Service</option>
-      <option value="rental">Rental</option>
-    </select>
-  </div>
+          <div className="field">
+            <span>🧰</span>
+            <select value={type} onChange={(e) => setType(e.target.value)}>
+              <option value="">All types</option>
+              <option value="service">Service</option>
+              <option value="rental">Rental</option>
+            </select>
+          </div>
 
-  <div className="field">
-    <span>🏙️</span>
-    <input
-      placeholder="City"
-      value={city}
-      onChange={(e) => setCity(e.target.value)}
-    />
-  </div>
+          <div className="field">
+            <span>🏙️</span>
+            <input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+          </div>
 
-  <div className="field">
-    <span>📍</span>
-    <input
-      placeholder="Area"
-      value={area}
-      onChange={(e) => setArea(e.target.value)}
-    />
-  </div>
+          <div className="field">
+            <span>📍</span>
+            <input placeholder="Area" value={area} onChange={(e) => setArea(e.target.value)} />
+          </div>
 
-  <div className="field">
-    <span>📮</span>
-    <input
-      placeholder="Pincode"
-      value={pincode}
-      onChange={(e) => setPincode(e.target.value)}
-    />
-  </div>
+          <div className="field">
+            <span>📮</span>
+            <input placeholder="Pincode" value={pincode} onChange={(e) => setPincode(e.target.value)} />
+          </div>
 
-  <button className="search-btn" type="submit">
-    Search
-  </button>
-</form>
+          <button className="search-btn" type="submit">Search</button>
+        </form>
+      </section>
 
+      <section className="results-section">
+        <div className="results-header">
+          <h2>Featured Listings</h2>
+          <p>{loading ? 'Refreshing listings...' : `${total} listings found`}</p>
+        </div>
 
-      {/* LISTINGS */}
-      <section className="results">
         {loading ? (
           <p className="muted">Loading listings...</p>
         ) : items.length ? (
@@ -175,244 +213,32 @@ export default function App() {
             </div>
 
             <div className="pager">
-              <button disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-                Prev
-              </button>
+              <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
               <span>Page {page} / {pages}</span>
-              <button disabled={page === pages} onClick={() => setPage(p => p + 1)}>
-                Next
-              </button>
+              <button disabled={page === pages} onClick={() => setPage((p) => p + 1)}>Next</button>
             </div>
           </>
         ) : (
-          <p className="muted">No listings found</p>
+          <p className="muted">No listings found.</p>
         )}
       </section>
 
+      <section className="trust-strip">
+        <article>
+          <h3>Fast discovery</h3>
+          <p>Optimized filtering with category, city, area, and pincode targeting.</p>
+        </article>
+        <article>
+          <h3>Direct conversion</h3>
+          <p>Integrated click-to-call and WhatsApp CTAs for higher lead response rates.</p>
+        </article>
+        <article>
+          <h3>Community-ready</h3>
+          <p>Supports verified providers and neighborhood-posted opportunities.</p>
+        </article>
+      </section>
+
       <Footer />
-
-      {/* STYLES */}
-      <style>{`
-        .app {
-          background: #f8fafc;
-          min-height: 100vh;
-        }
-
-        /* NAVBAR */
-        .navbar {
-          position: sticky;
-          top: 0;
-          z-index: 20;
-          background: #fff;
-          padding: 14px 20px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          border-bottom: 1px solid #eee;
-        }
-
-        .brand {
-          display: flex;
-          gap: 10px;
-          align-items: center;
-        }
-
-        .logo {
-          width: 38px;
-          height: 38px;
-          border-radius: 12px;
-          background: linear-gradient(135deg, #6366f1, #a855f7);
-          color: #fff;
-          font-weight: 800;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .brand-title {
-          font-weight: 800;
-          font-size: 18px;
-        }
-
-        .brand-sub {
-          font-size: 12px;
-          color: #777;
-        }
-
-        .nav-links {
-          display: flex;
-          gap: 16px;
-        }
-
-        .nav-right {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-        }
-
-        .link {
-          text-decoration: none;
-          color: #333;
-          font-weight: 600;
-        }
-
-        .avatar {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background: #4f46e5;
-          color: #fff;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .logout {
-          border: 2px solid #4f46e5;
-          background: transparent;
-          color: #4f46e5;
-          padding: 6px 12px;
-          border-radius: 10px;
-          cursor: pointer;
-          font-weight: 600;
-        }
-
-        /* HERO */
-        .hero {
-          background: linear-gradient(135deg, #eef2ff, #fdf4ff);
-          padding: 80px 20px 100px;
-          text-align: center;
-        }
-
-        .hero h2 {
-          font-size: 42px;
-          font-weight: 800;
-        }
-
-        .hero h2 span {
-          color: #6366f1;
-        }
-
-        .badge {
-          background: #fff;
-          padding: 6px 14px;
-          border-radius: 999px;
-          font-weight: 600;
-          display: inline-block;
-          margin-bottom: 16px;
-        }
-
-        .hero-search {
-          margin-top: 30px;
-          display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
-          gap: 12px;
-          background: #fff;
-          padding: 16px;
-          border-radius: 18px;
-          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-        .hero-search {
-  align-items: center;
-}
-
-.field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  padding: 10px 12px;
-  border-radius: 14px;
-}
-
-.field span {
-  font-size: 16px;
-  opacity: 0.7;
-}
-
-.field input,
-.field select {
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 14px;
-  width: 100%;
-}
-
-.search-btn {
-  background: linear-gradient(135deg, #4f46e5, #9333ea);
-  color: #fff;
-  padding: 12px 22px;
-  border-radius: 14px;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.search-btn:hover {
-  transform: translateY(-1px);
-}
-
-
-        .hero-search input,
-        .hero-search select {
-          padding: 12px 14px;
-          border-radius: 12px;
-          border: 1px solid #e5e7eb;
-        }
-
-        .hero-search button {
-          background: #4f46e5;
-          color: #fff;
-          border: none;
-          border-radius: 12px;
-          font-weight: 700;
-          cursor: pointer;
-        }
-
-        .results {
-          padding: 40px 20px;
-        }
-
-        .grid {
-          display: grid;
-          gap: 20px;
-          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        }
-
-        .pager {
-          margin-top: 24px;
-          display: flex;
-          justify-content: center;
-          gap: 12px;
-        }
-
-        .pager button {
-          background: #e0e7ff;
-          border: none;
-          padding: 8px 14px;
-          border-radius: 10px;
-          font-weight: 600;
-        }
-
-        .muted {
-          color: #777;
-          text-align: center;
-        }
-
-        @media (max-width: 900px) {
-          .hero-search {
-            grid-template-columns: 1fr 1fr;
-          }
-
-          .nav-links {
-            display: none;
-          }
-        }
-      `}</style>
     </div>
   );
 }
