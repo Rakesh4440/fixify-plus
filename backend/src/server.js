@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 
-import { connectDB } from './config/db.js';
+import { connectDB, getDBStatus } from './config/db.js';
 import authRoutes from './routes/auth.js';
 import listingRoutes from './routes/listings.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
@@ -19,7 +19,7 @@ const app = express();
 /* ---------- Robust CORS ---------- */
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
-  .map(s => s.trim().replace(/\/$/, ''))
+  .map((s) => s.trim().replace(/\/$/, ''))
   .filter(Boolean);
 
 app.use(
@@ -31,8 +31,8 @@ app.use(
       return cb(new Error(`Not allowed by CORS: ${origin}`));
     },
     credentials: true,
-    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     optionsSuccessStatus: 204
   })
 );
@@ -48,10 +48,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function resolveUploadsDir() {
-  const envDir = process.env.UPLOADS_DIR; // e.g. /tmp/uploads on Render
+  const envDir = process.env.UPLOADS_DIR;
   if (envDir && path.isAbsolute(envDir)) return envDir;
   if (envDir) return path.join(__dirname, '..', envDir);
-  return path.join(__dirname, '..', 'uploads'); // local dev default
+  return path.join(__dirname, '..', 'uploads');
 }
 
 const uploadsDir = resolveUploadsDir();
@@ -61,7 +61,13 @@ app.use(['/uploads', '/api/uploads'], express.static(uploadsDir));
 
 /* ---------- Health ---------- */
 app.get('/api/health', (req, res) =>
-  res.json({ status: 'ok', time: new Date().toISOString(), allowedOrigins, uploadsDir })
+  res.json({
+    status: 'ok',
+    time: new Date().toISOString(),
+    allowedOrigins,
+    uploadsDir,
+    db: getDBStatus()
+  })
 );
 
 /* ---------- Routes ---------- */
@@ -74,6 +80,7 @@ app.use(errorHandler);
 
 /* ---------- Boot ---------- */
 const PORT = process.env.PORT || 5000;
-connectDB(process.env.MONGO_URI).then(() => {
-  app.listen(PORT, () => console.log(`API listening on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`API listening on port ${PORT}`);
+  connectDB(process.env.MONGO_URI);
 });
