@@ -311,19 +311,11 @@ router.post('/:id/report', requireAuth, async (req, res, next) => {
 
     await createNotification({
       userId: listing.postedBy,
-      type: 'report',
+      senderId: req.user.id,
+      type: 'system',
       title: 'Listing reported',
       message: `"${listing.title}" received a new report.`,
-      metadata: {
-        listingId: listing._id,
-        reportId: report._id,
-        listingTitle: listing.title,
-        actorId: req.user.id,
-        actorName: req.user.name || 'A user'
-      },
-      dedupe: {
-        listingId: String(listing._id)
-      }
+      link: `/listing/${listing._id}`
     });
 
     res.status(201).json({ message: 'Report submitted' });

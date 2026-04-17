@@ -2,50 +2,38 @@ import Notification from '../models/Notification.js';
 
 export async function createNotification({
   userId,
+  senderId = null,
   type,
   title,
   message,
-  metadata = {},
-  dedupe = {}
+  link = ''
 }) {
-  if (!userId) return null;
+  if (!userId || !type || !title || !message) return null;
 
-  const dedupeQuery = {
+  const recentThreshold = new Date(Date.now() - 2 * 60 * 1000);
+  const existing = await Notification.findOne({
     user: userId,
     type,
-    isRead: false
-  };
+    link,
+    createdAt: { $gte: recentThreshold }
+  }).sort({ createdAt: -1 });
 
-  if (dedupe.conversationId) dedupeQuery['metadata.conversationId'] = dedupe.conversationId;
-  if (dedupe.bookingId) dedupeQuery['metadata.bookingId'] = dedupe.bookingId;
-  if (dedupe.listingId) dedupeQuery['metadata.listingId'] = dedupe.listingId;
-
-  const hasDedupeKey = Object.keys(dedupe).length > 0;
-
-  if (hasDedupeKey) {
-    const existing = await Notification.findOne(dedupeQuery).sort({ createdAt: -1 });
-    if (existing) {
-      existing.title = title;
-      existing.message = message;
-      existing.metadata = {
-        ...existing.metadata,
-        ...metadata,
-        repeatCount: Number(existing.metadata?.repeatCount || 1) + 1
-      };
-      existing.updatedAt = new Date();
-      await existing.save();
-      return existing;
-    }
+  if (existing) {
+    existing.sender = senderId || existing.sender || null;
+    existing.title = title;
+    existing.message = message;
+    existing.link = link || existing.link || '';
+    existing.isRead = false;
+    await existing.save();
+    return existing;
   }
 
   return Notification.create({
     user: userId,
+    sender: senderId,
     type,
     title,
     message,
-    metadata: {
-      repeatCount: 1,
-      ...metadata
-    }
+    link
   });
 }

@@ -159,9 +159,28 @@ button, input, select, textarea { font: inherit; }
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  align-items: flex-start;
 }
 .notif-item.unread { background: var(--primary-soft); }
 .notif-item p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+.notif-content {
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  cursor: pointer;
+}
+.notif-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.notif-meta {
+  font-size: 12px;
+}
 
 .hero-section,
 .results-section,

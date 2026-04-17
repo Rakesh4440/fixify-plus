@@ -7,6 +7,7 @@ export default function Dashboard() {
   const me = useMemo(() => getCurrentUser(), []);
   const [params, setParams] = useSearchParams();
   const activeTab = params.get('tab') || 'overview';
+  const selectedSender = params.get('sender') || '';
   const [items, setItems] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [conversations, setConversations] = useState([]);
@@ -63,6 +64,22 @@ export default function Dashboard() {
 
     loadDashboard();
   }, [me?.token]);
+
+  useEffect(() => {
+    if (!selectedSender || !conversations.length) return;
+
+    const match = conversations.find((conversation) =>
+      conversation.participants?.some((participant) => String(participant._id) === String(selectedSender))
+    );
+
+    if (!match) return;
+
+    (async () => {
+      setSelectedConversation(match);
+      const data = await api(`/conversations/${match._id}/messages`, { token: me.token });
+      setMessages(data.messages || []);
+    })();
+  }, [conversations, me?.token, selectedSender]);
 
   const totalListings = items.length;
   const serviceCount = items.filter((it) => it.type === 'service').length;

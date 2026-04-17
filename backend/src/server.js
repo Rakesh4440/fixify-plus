@@ -149,20 +149,11 @@ io.on('connection', (socket) => {
 
       await createNotification({
         userId: receiverId,
+        senderId,
         type: 'message',
         title: `New message from ${sender?.name || 'someone'}`,
-        message: text.slice(0, 120),
-        metadata: {
-          conversationId,
-          listingId,
-          senderId,
-          senderName: sender?.name || 'Unknown user',
-          listingTitle: listing?.title || 'Listing'
-        },
-        dedupe: {
-          conversationId: String(conversationId),
-          listingId: String(listingId)
-        }
+        message: `${sender?.name || 'Someone'} sent you a message about ${listing?.title || 'your listing'}.`,
+        link: `/chat/${senderId}`
       });
 
       io.to(`user:${receiverId}`).emit('message:new', message);

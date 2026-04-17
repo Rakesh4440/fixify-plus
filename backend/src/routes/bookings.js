@@ -25,21 +25,11 @@ router.post('/', requireAuth, async (req, res, next) => {
 
     await createNotification({
       userId: listing.postedBy._id,
+      senderId: req.user.id,
       type: 'booking',
       title: 'New booking request',
       message: `${req.user.name || 'A user'} requested "${listing.title}".`,
-      metadata: {
-        bookingId: booking._id,
-        listingId,
-        actorId: req.user.id,
-        actorName: req.user.name || 'A user',
-        listingTitle: listing.title,
-        bookingDate: booking.date
-      },
-      dedupe: {
-        bookingId: String(booking._id),
-        listingId: String(listingId)
-      }
+      link: '/dashboard?tab=bookings'
     });
 
     await sendEmail({
@@ -95,21 +85,11 @@ router.patch('/:id/status', requireAuth, async (req, res, next) => {
 
     await createNotification({
       userId: booking.userId._id,
-      type: 'booking-status',
+      senderId: booking.providerId._id,
+      type: 'booking',
       title: 'Booking updated',
       message: `Your booking for "${booking.listingId.title}" is now ${booking.status}.`,
-      metadata: {
-        bookingId: booking._id,
-        listingId: booking.listingId._id,
-        actorId: booking.providerId._id,
-        actorName: booking.providerId.name || 'Provider',
-        listingTitle: booking.listingId.title,
-        bookingStatus: booking.status
-      },
-      dedupe: {
-        bookingId: String(booking._id),
-        listingId: String(booking.listingId._id)
-      }
+      link: '/dashboard?tab=bookings'
     });
 
     await sendEmail({

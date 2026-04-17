@@ -89,20 +89,11 @@ router.post('/:id/messages', requireAuth, async (req, res, next) => {
 
     await createNotification({
       userId: receiverId,
+      senderId: req.user.id,
       type: 'message',
       title: `New message from ${sender?.name || 'someone'}`,
-      message: req.body.text.slice(0, 120),
-      metadata: {
-        conversationId: conversation._id,
-        listingId: conversation.listingId,
-        senderId: req.user.id,
-        senderName: sender?.name || 'Unknown user',
-        listingTitle: listing?.title || 'Listing'
-      },
-      dedupe: {
-        conversationId: String(conversation._id),
-        listingId: String(conversation.listingId)
-      }
+      message: `${sender?.name || 'Someone'} sent you a message about ${listing?.title || 'your listing'}.`,
+      link: `/chat/${req.user.id}`
     });
 
     res.status(201).json({ message });
