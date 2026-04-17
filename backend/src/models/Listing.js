@@ -75,4 +75,38 @@ const listingSchema = new Schema(
 
 listingSchema.index({ coordinates: '2dsphere' });
 
+function hasValidPointCoordinates(value) {
+  return (
+    value &&
+    Array.isArray(value.coordinates) &&
+    value.coordinates.length === 2 &&
+    value.coordinates.every((item) => Number.isFinite(item))
+  );
+}
+
+// Old production documents can contain `coordinates: { type: 'Point' }` with no
+// numeric coordinate pair. That breaks any later save, including review updates.
+// We auto-strip invalid geo data so reviews and other listing edits still work.
+listingSchema.pre('save', function normalizeBrokenGeoFields(next) {
+  const hasValidLatLng =
+    Number.isFinite(this.latitude) &&
+    Number.isFinite(this.longitude);
+
+  if (hasValidLatLng) {
+    this.coordinates = {
+      type: 'Point',
+      coordinates: [this.longitude, this.latitude]
+    };
+    return next();
+  }
+
+  if (!hasValidPointCoordinates(this.coordinates)) {
+    this.latitude = null;
+    this.longitude = null;
+    this.coordinates = undefined;
+  }
+
+  next();
+});
+
 export default mongoose.model('Listing', listingSchema);
