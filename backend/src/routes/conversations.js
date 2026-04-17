@@ -2,6 +2,7 @@ import express from 'express';
 import Conversation from '../models/Conversation.js';
 import Listing from '../models/Listing.js';
 import Message from '../models/Message.js';
+import User from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
 
@@ -70,6 +71,10 @@ router.post('/:id/messages', requireAuth, async (req, res, next) => {
     }
 
     const receiverId = conversation.participants.find((id) => String(id) !== String(req.user.id));
+    const [sender, listing] = await Promise.all([
+      User.findById(req.user.id).select('name'),
+      Listing.findById(conversation.listingId).select('title')
+    ]);
     const message = await Message.create({
       conversationId: conversation._id,
       listingId: conversation.listingId,
@@ -85,9 +90,19 @@ router.post('/:id/messages', requireAuth, async (req, res, next) => {
     await createNotification({
       userId: receiverId,
       type: 'message',
-      title: 'New message',
+      title: `New message from ${sender?.name || 'someone'}`,
       message: req.body.text.slice(0, 120),
-      metadata: { conversationId: conversation._id, listingId: conversation.listingId }
+      metadata: {
+        conversationId: conversation._id,
+        listingId: conversation.listingId,
+        senderId: req.user.id,
+        senderName: sender?.name || 'Unknown user',
+        listingTitle: listing?.title || 'Listing'
+      },
+      dedupe: {
+        conversationId: String(conversation._id),
+        listingId: String(conversation.listingId)
+      }
     });
 
     res.status(201).json({ message });
@@ -97,4 +112,3 @@ router.post('/:id/messages', requireAuth, async (req, res, next) => {
 });
 
 export default router;
-

@@ -28,7 +28,18 @@ router.post('/', requireAuth, async (req, res, next) => {
       type: 'booking',
       title: 'New booking request',
       message: `${req.user.name || 'A user'} requested "${listing.title}".`,
-      metadata: { bookingId: booking._id, listingId }
+      metadata: {
+        bookingId: booking._id,
+        listingId,
+        actorId: req.user.id,
+        actorName: req.user.name || 'A user',
+        listingTitle: listing.title,
+        bookingDate: booking.date
+      },
+      dedupe: {
+        bookingId: String(booking._id),
+        listingId: String(listingId)
+      }
     });
 
     await sendEmail({
@@ -87,7 +98,18 @@ router.patch('/:id/status', requireAuth, async (req, res, next) => {
       type: 'booking-status',
       title: 'Booking updated',
       message: `Your booking for "${booking.listingId.title}" is now ${booking.status}.`,
-      metadata: { bookingId: booking._id, listingId: booking.listingId._id }
+      metadata: {
+        bookingId: booking._id,
+        listingId: booking.listingId._id,
+        actorId: booking.providerId._id,
+        actorName: booking.providerId.name || 'Provider',
+        listingTitle: booking.listingId.title,
+        bookingStatus: booking.status
+      },
+      dedupe: {
+        bookingId: String(booking._id),
+        listingId: String(booking.listingId._id)
+      }
     });
 
     await sendEmail({
@@ -122,4 +144,3 @@ router.get('/listing/:listingId', requireAuth, async (req, res, next) => {
 });
 
 export default router;
-

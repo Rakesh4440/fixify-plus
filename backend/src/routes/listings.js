@@ -314,7 +314,16 @@ router.post('/:id/report', requireAuth, async (req, res, next) => {
       type: 'report',
       title: 'Listing reported',
       message: `"${listing.title}" received a new report.`,
-      metadata: { listingId: listing._id, reportId: report._id }
+      metadata: {
+        listingId: listing._id,
+        reportId: report._id,
+        listingTitle: listing.title,
+        actorId: req.user.id,
+        actorName: req.user.name || 'A user'
+      },
+      dedupe: {
+        listingId: String(listing._id)
+      }
     });
 
     res.status(201).json({ message: 'Report submitted' });
@@ -350,4 +359,3 @@ router.delete('/:listingId/reviews/:reviewId', requireAuth, async (req, res, nex
 });
 
 export default router;
-

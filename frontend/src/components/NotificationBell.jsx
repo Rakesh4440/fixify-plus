@@ -25,6 +25,29 @@ export default function NotificationBell() {
 
   if (!me?.token) return null;
 
+  function describeNotification(item) {
+    const meta = item.metadata || {};
+
+    if (item.type === 'message') {
+      const who = meta.senderName || 'Someone';
+      const where = meta.listingTitle ? ` about ${meta.listingTitle}` : '';
+      return `${who} sent you a message${where}.`;
+    }
+
+    if (item.type === 'booking') {
+      const who = meta.actorName || 'A user';
+      const where = meta.listingTitle ? ` for ${meta.listingTitle}` : '';
+      return `${who} requested a booking${where}.`;
+    }
+
+    if (item.type === 'booking-status') {
+      const where = meta.listingTitle ? ` for ${meta.listingTitle}` : '';
+      return `Booking status updated${where}${meta.bookingStatus ? `: ${meta.bookingStatus}` : ''}.`;
+    }
+
+    return item.message;
+  }
+
   return (
     <div className="notif-wrap">
       <button className="notif-btn" type="button" onClick={() => setOpen((value) => !value)}>
@@ -54,7 +77,10 @@ export default function NotificationBell() {
                 <li key={item._id} className={item.isRead ? 'notif-item' : 'notif-item unread'}>
                   <div>
                     <strong>{item.title}</strong>
-                    <p>{item.message}</p>
+                    <p>{describeNotification(item)}</p>
+                    {item.metadata?.repeatCount > 1 ? (
+                      <p className="muted">Repeated {item.metadata.repeatCount} times</p>
+                    ) : null}
                   </div>
                   {!item.isRead ? (
                     <button
@@ -79,4 +105,3 @@ export default function NotificationBell() {
     </div>
   );
 }
-

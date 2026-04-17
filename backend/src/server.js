@@ -22,6 +22,8 @@ import listingRoutes from './routes/listings.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 import Message from './models/Message.js';
 import Conversation from './models/Conversation.js';
+import Listing from './models/Listing.js';
+import User from './models/User.js';
 import { createNotification } from './utils/notifications.js';
 
 dotenv.config();
@@ -127,6 +129,11 @@ io.on('connection', (socket) => {
       const { conversationId, listingId, senderId, receiverId, text } = payload || {};
       if (!conversationId || !listingId || !senderId || !receiverId || !text) return;
 
+      const [sender, listing] = await Promise.all([
+        User.findById(senderId).select('name'),
+        Listing.findById(listingId).select('title')
+      ]);
+
       const message = await Message.create({
         conversationId,
         listingId,
@@ -143,9 +150,19 @@ io.on('connection', (socket) => {
       await createNotification({
         userId: receiverId,
         type: 'message',
-        title: 'New message',
+        title: `New message from ${sender?.name || 'someone'}`,
         message: text.slice(0, 120),
-        metadata: { conversationId, listingId }
+        metadata: {
+          conversationId,
+          listingId,
+          senderId,
+          senderName: sender?.name || 'Unknown user',
+          listingTitle: listing?.title || 'Listing'
+        },
+        dedupe: {
+          conversationId: String(conversationId),
+          listingId: String(listingId)
+        }
       });
 
       io.to(`user:${receiverId}`).emit('message:new', message);
