@@ -1,4 +1,20 @@
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const rawBase = import.meta.env.VITE_API_URL || '';
+
+if (!rawBase) {
+  console.warn(
+    '[api] Missing VITE_API_URL. Set it in your frontend environment to avoid broken deployed requests.'
+  );
+}
+
+const BASE = rawBase.replace(/\/$/, '');
+
+export function buildApiUrl(path) {
+  if (!BASE) {
+    throw new Error('Missing VITE_API_URL. Configure the frontend environment with your backend /api URL.');
+  }
+
+  return `${BASE}${path.startsWith('/') ? path : `/${path}`}`;
+}
 
 export async function api(path, { method = 'GET', body, token } = {}) {
   const headers = {};
@@ -13,7 +29,15 @@ export async function api(path, { method = 'GET', body, token } = {}) {
     payload = JSON.stringify(body);
   }
 
-  const res = await fetch(`${BASE}${path}`, {
+  const url = buildApiUrl(path);
+
+  console.log('[api] Request', {
+    method,
+    url,
+    hasToken: Boolean(token)
+  });
+
+  const res = await fetch(url, {
     method,
     headers,
     body: payload

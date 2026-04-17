@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { generateDescription, hasAI } from '../services/ai.js';
+import { api } from '../services/api.js';
 
 /* Ensure a phone string starts with +91 (India) for storage/display */
 function ensurePlus91(phone) {
@@ -23,6 +24,8 @@ export default function PostListing() {
     city: '',
     area: '',
     pincode: '',
+    latitude: '',
+    longitude: '',
     isCommunityPosted: false,
     description: ''
   });
@@ -33,7 +36,6 @@ export default function PostListing() {
   const [loadingAI, setLoadingAI] = useState(false);
 
   const token = localStorage.getItem('token');
-  const API = import.meta.env.VITE_API_URL;
 
   function update(k, v) {
     setForm((p) => ({ ...p, [k]: v }));
@@ -65,13 +67,7 @@ export default function PostListing() {
       );
       if (photo) fd.append('photo', photo);
 
-      const res = await fetch(`${API}/listings`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body: fd
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || 'Failed to create listing');
+      await api('/listings', { method: 'POST', token, body: fd });
 
       setMsg('✅ Listing created!');
       // reset the file preview (keep form values so user can post similar again)
@@ -164,6 +160,17 @@ export default function PostListing() {
             <label>
               <span>Pincode</span>
               <input value={form.pincode} onChange={(e) => update('pincode', e.target.value)} />
+            </label>
+          </div>
+
+          <div className="row2">
+            <label>
+              <span>Latitude</span>
+              <input value={form.latitude} onChange={(e) => update('latitude', e.target.value)} placeholder="12.9716" />
+            </label>
+            <label>
+              <span>Longitude</span>
+              <input value={form.longitude} onChange={(e) => update('longitude', e.target.value)} placeholder="77.5946" />
             </label>
           </div>
 

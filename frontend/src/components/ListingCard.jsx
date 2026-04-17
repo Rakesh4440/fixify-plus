@@ -23,7 +23,10 @@ export default function ListingCard({ item }) {
     contactNumber,
     photoPath,
     reviews = [],
-    isVerified
+    isVerified,
+    isFavorite,
+    distanceKm,
+    viewsCount
   } = item || {};
 
   const avg = reviews.length
@@ -66,6 +69,12 @@ export default function ListingCard({ item }) {
           ) : (
             <span className="muted">No ratings yet</span>
           )}
+        </div>
+
+        <div className="listing-meta">
+          {Number.isFinite(distanceKm) ? <span>{distanceKm.toFixed(1)} km away</span> : null}
+          {viewsCount ? <span> • {viewsCount} views</span> : null}
+          {isFavorite ? <span> • Bookmarked</span> : null}
         </div>
 
         <div className="listing-actions">

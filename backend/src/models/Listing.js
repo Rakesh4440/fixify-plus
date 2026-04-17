@@ -5,7 +5,8 @@ const reviewSchema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     rating: { type: Number, min: 1, max: 5, required: true },
-    comment: { type: String, trim: true }
+    comment: { type: String, trim: true },
+    isHidden: { type: Boolean, default: false }
   },
   { timestamps: true }
 );
@@ -30,6 +31,19 @@ const listingSchema = new Schema(
     city: { type: String, trim: true },
     area: { type: String, trim: true },
     pincode: { type: String, trim: true },
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null },
+    coordinates: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point'
+      },
+      coordinates: {
+        type: [Number],
+        default: undefined
+      }
+    },
 
     // pricing / type
     price: { type: Number },
@@ -48,6 +62,9 @@ const listingSchema = new Schema(
 
     // Community endorsements (optional)
     endorsements: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    favoritesCount: { type: Number, default: 0 },
+    viewsCount: { type: Number, default: 0 },
+    reportsCount: { type: Number, default: 0 },
 
     // Cloudinary image fields
     photoPath: { type: String, trim: true },       // https URL to the image
@@ -55,5 +72,7 @@ const listingSchema = new Schema(
   },
   { timestamps: true }
 );
+
+listingSchema.index({ coordinates: '2dsphere' });
 
 export default mongoose.model('Listing', listingSchema);

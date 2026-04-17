@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
 import ListingCard from './components/ListingCard.jsx';
-import Footer from './components/Footer.jsx';
-
-const API = import.meta.env.VITE_API_URL;
+import SkeletonCard from './components/SkeletonCard.jsx';
+import SearchSuggestions from './components/SearchSuggestions.jsx';
+import { api } from './services/api.js';
+import { getCurrentUser } from './services/session.js';
 
 const quickFilters = [
   { label: 'Emergency Electrician', q: 'electrician' },
@@ -12,125 +12,109 @@ const quickFilters = [
   { label: 'Plumbing', q: 'plumber', type: 'service' }
 ];
 
-function decodeUserToken() {
-  const token = localStorage.getItem('token');
-  if (!token) return null;
-
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return { token, role: payload.role, id: payload.id };
-  } catch {
-    return null;
-  }
-}
-
 export default function App() {
-  const me = useMemo(() => decodeUserToken(), []);
-
+  const me = getCurrentUser();
+  const sentinelRef = useRef(null);
   const [q, setQ] = useState('');
   const [type, setType] = useState('');
   const [city, setCity] = useState('');
   const [area, setArea] = useState('');
   const [pincode, setPincode] = useState('');
   const [page, setPage] = useState(1);
-
   const [items, setItems] = useState([]);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [nearby, setNearby] = useState(null);
 
-  async function load() {
+  async function load(nextPage = 1, replace = true) {
     setLoading(true);
+    setError('');
 
-    const params = new URLSearchParams({
-      ...(q && { q }),
-      ...(type && { type }),
-      ...(city && { city }),
-      ...(area && { area }),
-      ...(pincode && { pincode }),
-      page,
-      limit: 12
-    });
+    try {
+      const params = new URLSearchParams({
+        ...(q && { q }),
+        ...(type && { type }),
+        ...(city && { city }),
+        ...(area && { area }),
+        ...(pincode && { pincode }),
+        ...(nearby?.lat ? { nearLat: nearby.lat } : {}),
+        ...(nearby?.lng ? { nearLng: nearby.lng } : {}),
+        page: String(nextPage),
+        limit: '8'
+      });
 
-    const res = await fetch(`${API}/listings?${params}`);
-    const data = await res.json();
-
-    setItems(data.items || []);
-    setPages(data.pages || 1);
-    setTotal(data.total || 0);
-    setLoading(false);
+      const data = await api(`/listings?${params.toString()}`, { token: me?.token });
+      setItems((current) => (replace ? (data.items || []) : [...current, ...(data.items || [])]));
+      setPages(data.pages || 1);
+      setTotal(data.total || 0);
+      setPage(nextPage);
+    } catch (err) {
+      setError(err.message || 'Failed to load listings');
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+    load(1, true);
+  }, []);
+
+  useEffect(() => {
+    if (!q.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const data = await api(`/listings/suggestions?q=${encodeURIComponent(q)}`);
+        setSuggestions(data.suggestions || []);
+      } catch (_err) {
+        setSuggestions([]);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [q]);
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting && !loading && page < pages) {
+        load(page + 1, false);
+      }
+    }, { rootMargin: '220px' });
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [loading, page, pages, q, type, city, area, pincode, nearby]);
 
   function onSearch(e) {
     e.preventDefault();
-    setPage(1);
-    load();
+    load(1, true);
   }
 
   function applyQuickFilter(filter) {
     setQ(filter.q || '');
     setType(filter.type || '');
-    setPage(1);
-
-    setTimeout(() => {
-      load();
-    }, 0);
+    setTimeout(() => load(1, true), 0);
   }
 
   return (
-    <div className="page-shell">
-      <header className="navbar">
-        <div className="brand">
-          <div className="logo-chip">F+</div>
-          <div>
-            <div className="brand-title">Fixify+</div>
-            <div className="brand-sub">Local Services & Rentals</div>
-          </div>
-        </div>
-
-        <nav className="nav-links">
-          <Link to="/" className="link">Home</Link>
-          <Link to="/post" className="link">Post Service</Link>
-          <Link to="/dashboard" className="link">Dashboard</Link>
-        </nav>
-
-        <div className="nav-right">
-          {me ? (
-            <>
-              <div className="avatar">{me.role?.[0]?.toUpperCase() || 'U'}</div>
-              <button
-                className="logout"
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  window.location.reload();
-                }}
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="link">Login</Link>
-              <Link to="/register" className="link">Register</Link>
-            </>
-          )}
-        </div>
-      </header>
-
+    <>
       <section className="hero-section">
         <div className="hero">
           <div className="hero-content">
-            <span className="badge">🚀 Production-ready local marketplace UX</span>
+            <span className="badge">Production-ready local marketplace UX</span>
             <h1>
-              Book trusted local help in <span>minutes</span>
+              Discover trusted neighborhood help in <span>minutes</span>
             </h1>
             <p>
-              Discover nearby professionals, compare options, and connect instantly through call or WhatsApp.
+              Search by location, see nearby providers, book services, chat instantly, and track performance from a recruiter-ready dashboard.
             </p>
 
             <div className="quick-filters">
@@ -148,23 +132,33 @@ export default function App() {
               <strong>{total}</strong>
             </div>
             <div className="metric-card">
-              <span>Available cities</span>
-              <strong>{new Set(items.map((it) => it.city).filter(Boolean)).size || '-'}</strong>
+              <span>Visible cards</span>
+              <strong>{items.length}</strong>
             </div>
             <div className="metric-card">
-              <span>Community posts</span>
-              <strong>{items.filter((it) => it.isCommunityPosted).length}</strong>
+              <span>Search mode</span>
+              <strong>{nearby ? 'Nearby' : 'Global'}</strong>
             </div>
           </div>
         </div>
 
         <form className="hero-search" onSubmit={onSearch}>
-          <div className="field">
-            <span>🔍</span>
-            <input
-              placeholder="Search service (plumber, cook...)"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
+          <div className="field field-stack">
+            <div className="field-inline">
+              <span>🔍</span>
+              <input
+                placeholder="Search service, category, or area"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+            <SearchSuggestions
+              suggestions={suggestions}
+              onSelect={(value) => {
+                setQ(value);
+                setSuggestions([]);
+                setTimeout(() => load(1, true), 0);
+              }}
             />
           </div>
 
@@ -192,53 +186,66 @@ export default function App() {
             <input placeholder="Pincode" value={pincode} onChange={(e) => setPincode(e.target.value)} />
           </div>
 
-          <button className="search-btn" type="submit">Search</button>
+          <div className="search-actions">
+            <button className="search-btn" type="submit">Search</button>
+            <button
+              className="btn ghost"
+              type="button"
+              onClick={() => {
+                navigator.geolocation?.getCurrentPosition(
+                  (position) => {
+                    setNearby({
+                      lat: position.coords.latitude,
+                      lng: position.coords.longitude
+                    });
+                    setTimeout(() => load(1, true), 0);
+                  },
+                  () => setError('Unable to get your location right now.')
+                );
+              }}
+            >
+              Nearby
+            </button>
+          </div>
         </form>
       </section>
 
       <section className="results-section">
         <div className="results-header">
           <h2>Featured Listings</h2>
-          <p>{loading ? 'Refreshing listings...' : `${total} listings found`}</p>
+          <p>{loading && !items.length ? 'Refreshing listings...' : `${total} listings found`}</p>
         </div>
 
-        {loading ? (
-          <p className="muted">Loading listings...</p>
-        ) : items.length ? (
-          <>
-            <div className="grid">
-              {items.map((it) => (
-                <ListingCard key={it._id} item={it} />
-              ))}
-            </div>
+        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
 
-            <div className="pager">
-              <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
-              <span>Page {page} / {pages}</span>
-              <button disabled={page === pages} onClick={() => setPage((p) => p + 1)}>Next</button>
-            </div>
-          </>
-        ) : (
+        <div className="grid">
+          {items.map((it) => (
+            <ListingCard key={it._id} item={it} />
+          ))}
+          {loading && !items.length ? Array.from({ length: 4 }).map((_, index) => <SkeletonCard key={index} />) : null}
+        </div>
+
+        {!loading && !items.length && !error ? (
           <p className="muted">No listings found.</p>
-        )}
+        ) : null}
+
+        {page < pages ? <div ref={sentinelRef} style={{ height: 10 }} /> : null}
       </section>
 
       <section className="trust-strip">
         <article>
           <h3>Fast discovery</h3>
-          <p>Optimized filtering with category, city, area, and pincode targeting.</p>
+          <p>Autocomplete, nearby sorting, and infinite loading keep the marketplace easy to browse.</p>
         </article>
         <article>
           <h3>Direct conversion</h3>
-          <p>Integrated click-to-call and WhatsApp CTAs for higher lead response rates.</p>
+          <p>WhatsApp and Call buttons remain intact while bookings and chat add stronger lead capture.</p>
         </article>
         <article>
-          <h3>Community-ready</h3>
-          <p>Supports verified providers and neighborhood-posted opportunities.</p>
+          <h3>Operational depth</h3>
+          <p>Admin oversight, analytics, notifications, and reporting now support a more production-ready workflow.</p>
         </article>
       </section>
-
-      <Footer />
-    </div>
+    </>
   );
 }

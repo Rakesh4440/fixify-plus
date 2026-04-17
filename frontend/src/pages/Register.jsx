@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../services/api.js';
+import { api, buildApiUrl } from '../services/api.js';
+import { saveSession } from '../services/session.js';
 
 export default function Register() {
   const nav = useNavigate();
@@ -33,12 +34,13 @@ export default function Register() {
     }
     try {
       setLoading(true);
-      await api('/auth/register', {
+      const data = await api('/auth/register', {
         method: 'POST',
         body: { name: form.name, email: form.email, phone: form.phone, password: form.password }
       });
-      setMsg('Registered! Redirecting to login…');
-      setTimeout(() => nav('/login'), 800);
+      saveSession(data.token);
+      setMsg('Registered! Redirecting…');
+      setTimeout(() => nav('/dashboard'), 800);
     } catch (e) {
       setMsg(e.message || 'Could not register');
     } finally {
@@ -187,6 +189,10 @@ export default function Register() {
           <span className="muted">Already have an account?</span>
           <Link className="btn ghost" to="/login">Sign in</Link>
         </div>
+
+        <a href={buildApiUrl('/auth/google')} className="btn ghost" style={{ marginTop: 12, display: 'inline-flex' }}>
+          Sign up with Google
+        </a>
       </div>
     </div>
   );

@@ -60,6 +60,9 @@ async function main() {
         city: 'Bengaluru',
         area: 'Whitefield',
         pincode: '560066',
+        latitude: 12.9698,
+        longitude: 77.7499,
+        coordinates: { type: 'Point', coordinates: [77.7499, 12.9698] },
         location: 'Near Forum Shantiniketan',
         serviceType: 'housekeeping',
         availability: 'Mon-Sat, 7–11 AM',
@@ -80,6 +83,9 @@ async function main() {
         city: 'Bengaluru',
         area: 'Indiranagar',
         pincode: '560038',
+        latitude: 12.9784,
+        longitude: 77.6408,
+        coordinates: { type: 'Point', coordinates: [77.6408, 12.9784] },
         availability: 'Daily, 6–9 AM & 6–9 PM',
         reviews: [
           { user: community._id, rating: 4, comment: 'Tasty and hygienic.' }
@@ -97,7 +103,10 @@ async function main() {
         state: 'Karnataka',
         city: 'Bengaluru',
         area: 'Marathahalli',
-        pincode: '560037'
+        pincode: '560037',
+        latitude: 12.9591,
+        longitude: 77.6974,
+        coordinates: { type: 'Point', coordinates: [77.6974, 12.9591] }
       },
       {
         title: 'Bicycle for Rent (MTB)',
@@ -111,6 +120,9 @@ async function main() {
         city: 'Bengaluru',
         area: 'HSR Layout',
         pincode: '560102',
+        latitude: 12.9116,
+        longitude: 77.6474,
+        coordinates: { type: 'Point', coordinates: [77.6474, 12.9116] },
         rentalDurationUnit: 'day',
         itemCondition: 'Good'
       }

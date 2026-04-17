@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { api } from '../services/api.js';
 
 const API = import.meta.env.VITE_API_URL;
 const API_BASE = (API || '').replace(/\/api$/, '');
@@ -29,6 +30,8 @@ export default function EditListing() {
     city: '',
     area: '',
     pincode: '',
+    latitude: '',
+    longitude: '',
     isCommunityPosted: false,
     description: '',
     photoPath: ''
@@ -44,9 +47,7 @@ export default function EditListing() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API}/listings/${id}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.message || 'Failed to load');
+        const data = await api(`/listings/${id}`, { token });
         setForm({
           title: data.title || '',
           type: data.type || 'service',
@@ -56,6 +57,8 @@ export default function EditListing() {
           city: data.city || '',
           area: data.area || '',
           pincode: data.pincode || '',
+          latitude: data.latitude || '',
+          longitude: data.longitude || '',
           isCommunityPosted: !!data.isCommunityPosted,
           description: data.description || '',
           photoPath: data.photoPath || ''
@@ -93,13 +96,11 @@ export default function EditListing() {
       });
       if (photo) fd.append('photo', photo);
 
-      const res = await fetch(`${API}/listings/${id}`, {
+      await api(`/listings/${id}`, {
         method: 'PUT',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        token,
         body: fd
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || 'Failed to update');
 
       setMsg('✅ Listing updated!');
       update('contactNumber', normalizedPhone);
@@ -159,6 +160,15 @@ export default function EditListing() {
             </label>
             <label><span>Pincode</span>
               <input value={form.pincode} onChange={(e) => update('pincode', e.target.value)} />
+            </label>
+          </div>
+
+          <div className="row2">
+            <label><span>Latitude</span>
+              <input value={form.latitude} onChange={(e) => update('latitude', e.target.value)} />
+            </label>
+            <label><span>Longitude</span>
+              <input value={form.longitude} onChange={(e) => update('longitude', e.target.value)} />
             </label>
           </div>
 

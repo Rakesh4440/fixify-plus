@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../services/api.js';
+import { api, buildApiUrl } from '../services/api.js';
+import { saveSession } from '../services/session.js';
 
 export default function Login() {
   const nav = useNavigate();
@@ -16,7 +17,7 @@ export default function Login() {
     setLoading(true);
     try {
       const data = await api('/auth/login', { method: 'POST', body: { email, password } });
-      localStorage.setItem('token', data.token);
+      saveSession(data.token);
       setMsg('Logged in! Redirecting…');
       setTimeout(() => nav('/'), 600);
     } catch (e) {
@@ -118,6 +119,10 @@ export default function Login() {
           <span className="muted">New here?</span>
           <Link className="btn ghost" to="/register">Create an account</Link>
         </div>
+
+        <a href={buildApiUrl('/auth/google')} className="btn ghost" style={{ marginTop: 12, display: 'inline-flex' }}>
+          Continue with Google
+        </a>
       </div>
     </div>
   );

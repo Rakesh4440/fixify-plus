@@ -1,110 +1,155 @@
-# Fixify+ — Community Services & P2P Rentals (MERN)
+# Fixify+ — Production-Ready MERN Marketplace
 
-**Fixify+** is a community-driven marketplace that connects residents with **local service providers** (maids, plumbers, cooks, tutors) and enables **peer-to-peer rentals** (tools, bicycles, gear).  
-It’s designed to be **inclusive**: providers don’t need smartphones or accounts—**community members can post on their behalf**, and customers contact them directly via **WhatsApp/Call**.
+Fixify+ is a recruiter-friendly MERN application for neighborhood services and rentals. The app keeps the original marketplace flow intact, including the existing WhatsApp and Call actions, while extending it with bookings, chat, notifications, admin tooling, location-aware discovery, analytics, and Docker support.
 
----
+## Highlights
 
-## ✨ Features
-- Community-posted listings (on behalf of providers).
-- Services & Rentals in one model (`type: "service" | "rental"`).
-- Image uploads (stored locally).
-- Search & Filters: query, category, city/area/pincode, type.
-- Pagination & indexing for performance.
-- Reviews & Ratings system (stars + comments).
-- Direct WhatsApp & Call buttons.
-- JWT-based auth for secure login/registration.
-- Owner-only edit/delete for listings.
+- JWT auth with role-aware access control
+- Google OAuth via Passport.js
+- Listing ownership protection for edit/delete
+- Booking system with provider accept/reject flow
+- Real-time chat with Socket.io and MongoDB persistence
+- Notification center for bookings, messages, and moderation events
+- Admin dashboard with stats, user/listing deletion, and report review
+- Browser geolocation support and nearby sorting
+- Favorites/bookmarks, reports, listing view analytics, and search suggestions
+- Dark mode, loading skeletons, and responsive UI improvements
+- Standardized `/api/...` routes, centralized error handling, and rate limiting
+- Docker support for frontend, backend, and MongoDB
 
----
+## Project Structure
 
-## 🚀 Quick Start
-
-### Backend
 ```bash
-cd backend
-cp .env.example .env   # edit with your details
-npm install
-npm run dev
-.env example
-
-ini
-Copy
-Edit
-PORT=5000
-MONGO_URI=your_mongo_connection_string
-JWT_SECRET=your_secret
-CORS_ORIGIN=http://localhost:5173
-Frontend
-bash
-Copy
-Edit
-cd frontend
-cp .env.example .env
-npm install
-npm run dev
-.env example
-
-bash
-Copy
-Edit
-VITE_API_URL=http://localhost:5000/api
-Optional: Seed Demo Data
-bash
-Copy
-Edit
-cd backend
-npm run seed
-🧭 How It Works
-Register/Login
-
-Post a listing (with phone number & photo)
-
-Browse & Filter listings by location/category
-
-Contact provider directly via WhatsApp/Call
-
-Leave reviews and rate services
-
-📦 Tech Stack
-MongoDB Atlas — database
-
-Express.js — backend APIs
-
-React (Vite) — frontend
-
-Node.js — server
-
-Multer — file uploads
-
-JWT + bcrypt — authentication & security
-
-📂 Project Structure
-bash
-Copy
-Edit
 fixify-plus/
   backend/
-    src/models/Listing.js
-    src/models/User.js
-    src/routes/
-    uploads/
+    src/
+      config/
+      middleware/
+      models/
+      routes/
+      utils/
   frontend/
-    src/components/
-    src/pages/
-    src/services/
-🔐 Security
-JWT authentication
+    src/
+      components/
+      pages/
+      services/
+  docker-compose.yml
+```
 
-Passwords hashed with bcrypt
+## Backend Environment
 
-CORS restricted
+Copy `backend/.env.example` to `backend/.env` and configure:
 
-Edit/Delete only allowed for owners
+```ini
+PORT=5000
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/fixifyplus?retryWrites=true&w=majority
+JWT_SECRET=your_jwt_secret_here
+CORS_ORIGIN=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
+JWT_EXPIRES_IN=7d
+RATE_LIMIT_MAX=300
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_CALLBACK_URL=http://localhost:5000/api/auth/google/callback
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+EMAIL_FROM=no-reply@fixify.local
+```
 
-☁️ Deployment
-Backend: Render / Railway
+## Frontend Environment
 
-Frontend: Vercel / Netlify
+Copy `frontend/.env.example` to `frontend/.env`:
 
-Env vars must be configured accordingly.
+```bash
+VITE_API_URL=http://localhost:5000/api
+```
+
+Important: in production, `VITE_API_URL` must point to your deployed backend `/api` base URL. The frontend no longer falls back to `localhost`.
+
+## Local Development
+
+Backend:
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Optional seed:
+
+```bash
+cd backend
+npm run seed
+```
+
+## API Modules
+
+- `/api/auth`
+  Register, login, current user, Google OAuth, favorites
+- `/api/listings`
+  CRUD, reviews, suggestions, reporting, geolocation-aware listing fetch
+- `/api/bookings`
+  Booking create/history/provider status updates
+- `/api/conversations`
+  Chat threads and messages
+- `/api/notifications`
+  Notification center and read state
+- `/api/admin`
+  Stats, moderation, user/listing management
+
+## Deployment Notes
+
+### Frontend on Vercel
+
+- Set project root to `frontend`
+- Add `VITE_API_URL` pointing to your backend
+- `frontend/vercel.json` rewrites dynamic SPA routes like `/listing/:id` to `index.html`
+
+### Backend on Render/Railway
+
+- Set `CORS_ORIGIN` to your frontend origin
+- Set `FRONTEND_URL` for Google OAuth redirect
+- Configure MongoDB, Google OAuth, and optional SMTP credentials
+
+## Docker
+
+Run the full stack with:
+
+```bash
+docker-compose up --build
+```
+
+Services:
+
+- Frontend: `http://localhost:8080`
+- Backend: `http://localhost:5000`
+- MongoDB: `mongodb://localhost:27017`
+
+If you prefer MongoDB Atlas, set `MONGO_URI` in your shell before running `docker-compose up` and the backend will use it instead of the local Mongo container default.
+
+## Existing Features Preserved
+
+- WhatsApp button remains active on listing cards and detail pages
+- Call button remains active on listing cards and detail pages
+- Listing creation, editing, detail views, and reviews remain in place
+
+## Recruiter-Impressive Additions
+
+- Admin-ready operational dashboard
+- Realtime customer-to-provider chat
+- Booking workflow and notifications
+- Nearby search plus richer listing analytics
+- Favorites, reporting, dark mode, and loading skeletons
+- Dockerized local environment and deployment-oriented env structure
